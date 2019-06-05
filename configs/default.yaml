@@ -1,0 +1,31 @@
+experiment_name: "debug"
+n_epochs: 40
+seed: 0
+
+log_dir: "result/isogd"
+tensorboard_dir: "result/isogd/runs"
+
+training: 
+  log_interval:         100
+  log_samples_interval: 5000
+  snapshot_interval:    5000
+  evaluation_interval:  60000
+
+dataset:
+  path: "data"
+  name: "mnist"
+  batchsize: 20
+  n_workers: 4
+  height: 28
+  width: 28
+  number_limit: -1
+
+models:
+gen:
+  optimizer:
+    lr: 0.0002
+    decay: 0.00001
+dis:
+  optimizer:
+    lr: 0.0002
+    decay: 0.00001

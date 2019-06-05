@@ -3,11 +3,39 @@ from typing import List
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+import torch.nn.init as init
 from torch.autograd import Variable
 
-tt = torch.cuda if torch.cuda.is_available() else torch
+tensor = torch.cuda if torch.cuda.is_available() else torch
 
 params = {"img_w": 28, "img_h": 28, "dim_z": 62, "dim_c": 12}
+
+
+def init_normal(layer):
+    if type(layer) in [nn.Conv2d, nn.ConvTranspose2d]:
+        # print(layer)
+        init.normal_(layer.weight.data, 0, 0.02)
+    elif type(layer) in [nn.BatchNorm2d]:
+        init.normal_(layer.weight.data, 1.0, 0.02)
+        init.constant_(layer.bias.data, 0.0)
+
+
+class NormalNLLLoss:
+    """
+    Calculate the negative log likelihood
+    of normal distribution.
+    This needs to be minimised.
+    Treating Q(cj | x) as a factored Gaussian.
+    """
+
+    def __call__(self, x, mu, var):
+
+        logli = -0.5 * (var.mul(2 * np.pi) + 1e-6).log() - (x - mu).pow(2).div(
+            var.mul(2.0) + 1e-6
+        )
+        nll = -(logli.sum(1).mean())
+
+        return nll
 
 
 class Generator(nn.Module):
@@ -30,12 +58,14 @@ class Generator(nn.Module):
             nn.Sigmoid(),
         )
 
+        self.apply(init_normal)
+
     def forward(self, x: Variable) -> Variable:
         return self.main(x)
 
     def forward_dummy(self) -> Variable:
         shape = (2, self.dim_input, 1, 1)
-        dummy_tensor = Variable(tt.FloatTensor(*shape).normal_())
+        dummy_tensor = Variable(tensor.FloatTensor(*shape).normal_())
         return self.forward(dummy_tensor)
 
 
@@ -56,18 +86,40 @@ class Discriminator(nn.Module):
 
         self.dhead = DHead()
         self.qhead = QHead()
+        self.apply(init_normal)
+
+        self.loss_bce = nn.BCELoss()
+        self.loss_dis = nn.CrossEntropyLoss()
+        self.loss_con = NormalNLLLoss
+
+        self.device = (
+            torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
+        )
 
     def forward(self, x: Variable) -> Variable:
-        return self.main(x)
+        _inter = self.main(x)
+        y = self.dhead(_inter)
+        c = self.qhead(_inter)
+
+        return y, c
 
     def forward_dummy(self) -> List[Variable]:
         shape = (2, 1, params["img_h"], params["img_w"])
-        dummy_tensor = Variable(tt.FloatTensor(*shape).normal_())
-        _inter = self.forward(dummy_tensor)
-        y = self.dhead(_inter)
-        c1, c2, c3 = self.qhead(_inter)
+        dummy_tensor = Variable(tensor.FloatTensor(*shape).normal_())
 
-        return y, c1, c2, c3
+        return self.forward(dummy_tensor)
+
+    def compute_gan_loss(self, y_real: Variable, y_fake: Variable) -> Variable:
+        ones = torch.ones_like(y_real, device=self.device)
+        zeros = torch.zeros_like(y_fake, device=self.device)
+
+        loss = self.loss_bce(y_real, ones)
+        loss += self.loss_bce(y_fake, zeros)
+
+        return loss
+
+    def compute_info_loss(self, c_true: Variable, c_hat: Variable) -> Variable:
+        pass
 
 
 class DHead(nn.Module):
@@ -117,5 +169,5 @@ if __name__ == "__main__":
     print(x.shape)
 
     d = Discriminator()
-    y, c1, c2, c3 = d.forward_dummy()
-    print(y.shape, c1.shape, c2.shape, c3.shape)
+    y, c = d.forward_dummy()
+    print(y.shape, len(c))
