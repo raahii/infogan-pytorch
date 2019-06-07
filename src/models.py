@@ -1,5 +1,6 @@
 from typing import List
 
+import numpy as np
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -29,7 +30,6 @@ class NormalNLLLoss:
     """
 
     def __call__(self, x, mu, var):
-
         logli = -0.5 * (var.mul(2 * np.pi) + 1e-6).log() - (x - mu).pow(2).div(
             var.mul(2.0) + 1e-6
         )
@@ -88,7 +88,7 @@ class Discriminator(nn.Module):
         self.qhead = QHead()
         self.apply(init_normal)
 
-        self.loss_bce = nn.BCELoss()
+        self.loss_bce = nn.BCELoss(reduction="mean")
         self.loss_dis = nn.CrossEntropyLoss()
         self.loss_con = NormalNLLLoss
 
@@ -109,7 +109,7 @@ class Discriminator(nn.Module):
 
         return self.forward(dummy_tensor)
 
-    def compute_gan_loss(self, y_real: Variable, y_fake: Variable) -> Variable:
+    def compute_adv_loss(self, y_real: Variable, y_fake: Variable) -> Variable:
         ones = torch.ones_like(y_real, device=self.device)
         zeros = torch.zeros_like(y_fake, device=self.device)
 
@@ -119,6 +119,7 @@ class Discriminator(nn.Module):
         return loss
 
     def compute_info_loss(self, c_true: Variable, c_hat: Variable) -> Variable:
+        return Variable
         pass
 
 
@@ -157,13 +158,6 @@ class QHead(nn.Module):
 
 
 if __name__ == "__main__":
-    # import yaml
-    #
-    # f = open("./configs/mnist.yaml")
-    # params = yaml.load(f)
-    # print(params)
-    # f.close()
-
     g = Generator()
     x = g.forward_dummy()
     print(x.shape)
