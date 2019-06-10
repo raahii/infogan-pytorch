@@ -8,6 +8,7 @@ import yaml
 from torch.utils.data import DataLoader
 
 from dataset import new_mnist_dataset
+from logger import Logger
 from models import Discriminator, Generator
 from trainer import Trainer
 
@@ -67,8 +68,16 @@ def main():
     opt_dis = create_optimizer(dis.parameters(), **config["dis"]["optimizer"])
     opts = {"gen": opt_gen, "dis": opt_dis}
 
+    log_path = Path(config["log_path"])
+    log_path.mkdir(parents=True, exist_ok=True)
+    tb_path = Path(config["tensorboard_path"])
+    tb_path.mkdir(parents=True, exist_ok=True)
+
+    # Initialize logger
+    logger = Logger(log_path, tb_path)
+
     # start training
-    trainer = Trainer(dataloader, models, opts, config)
+    trainer = Trainer(dataloader, models, opts, config, logger)
     trainer.train()
 
 
