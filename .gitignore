@@ -1,7 +1,9 @@
 .python-version
+.mypy_cache
 __pycache__
 
 data/*
 result/*
 notebooks/*
 !.gitkeep
+

@@ -1,3 +1,5 @@
-autopep8
-black
 isort
+black
+mypy
+
+colorlog

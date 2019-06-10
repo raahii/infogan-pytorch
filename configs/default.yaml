@@ -2,10 +2,34 @@ experiment_name: "debug"
 n_epochs: 40
 seed: 0
 
-log_dir: "result/isogd"
-tensorboard_dir: "result/isogd/runs"
+log_path: "result/debug"
+tensorboard_path: "result/debug/runs"
 
-training: 
+latent_variables:
+  z:
+    type: "normal"
+    dim: 128
+    min: 0
+    max: 1
+
+  c1:
+    type: "categorical"
+    dim: 1
+    k: 10
+  
+  c2:
+    type: "uniform"
+    dim: 1
+    min: -1
+    max: 1
+
+  c3:
+    type: "uniform"
+    dim: 1
+    min: -1
+    max: 1
+
+training:
   log_interval:         100
   log_samples_interval: 5000
   snapshot_interval:    5000
@@ -21,11 +45,11 @@ dataset:
   number_limit: -1
 
 models:
-gen:
-  optimizer:
-    lr: 0.0002
-    decay: 0.00001
-dis:
-  optimizer:
-    lr: 0.0002
-    decay: 0.00001
+  gen:
+    optimizer:
+      lr: 0.0002
+      decay: 0.00001
+  dis:
+    optimizer:
+      lr: 0.0002
+      decay: 0.00001
