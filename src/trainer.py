@@ -7,7 +7,8 @@ from torch import nn
 from torch.optim import Optimizer
 from torch.utils.data import DataLoader
 
-from logger import Logger
+import loss
+from logger import Logger, MetricType
 
 
 class Trainer(object):
@@ -52,44 +53,58 @@ class Trainer(object):
         )
 
     def train(self):
-        # Retrieve models and move them if necessary
+        # retrieve models and move them if necessary
         gen, dis = self.models["gen"], self.models["dis"]
         if torch.cuda.is_available():
             gen.cuda()
             dis.cuda()
 
-        # Retrieve optimizers
+        # retrieve optimizers
         opt_gen = self.optimizers["gen"]
         opt_dis = self.optimizers["dis"]
 
+        adv_loss = loss.AdversarialLoss()
+        info_loss = loss.InfoGANLoss(self.configs["latent_variables"])
+
+        # Define metrics
+        self.logger.define("iteration", MetricType.Number)
+        self.logger.define("epoch", MetricType.Number)
+        self.logger.define("loss_gen", MetricType.Loss)
+        self.logger.define("loss_dis", MetricType.Loss)
+        print(self.logger.metric_keys())
+
         # Start training
+        self.logger.info(f"Start training, device: {self.device}")
+        self.logger.print_header()
         for i in range(self.configs["n_epochs"]):
             self.epoch += 1
             for x_real, c_true in iter(self.dataloader):
                 self.iteration += 1
                 batchsize = len(x_real)
 
-                # --- phase generator ---
+                # phase for generator ---
                 gen.train()
                 opt_gen.zero_grad()
 
                 x_fake = gen.infer(batchsize)
                 y_fake, c_fake = dis(x_fake.detach())
 
-                loss_gen = dis.compute_adv_loss(y_fake, None)
-                loss_gen += dis.compute_info_loss(c_fake, c_true)
+                # compute loss as fake samples are real
+                loss_gen = adv_loss(y_fake, loss.LABEL_REAL)
+                # loss_gen += info_loss(c_fake, c_true)
 
                 loss_gen.backward()
                 opt_gen.step()
 
-                # --- phase discriminator ---
+                # phase generator
                 dis.train()
                 opt_dis.zero_grad()
 
                 y_real, c_real = dis(x_real)
 
-                loss_dis = dis.compute_adv_loss(y_real, y_fake.detach())
-                loss_dis += dis.compute_info_loss(c_real, c_true)
+                loss_dis = adv_loss(y_real, loss.LABEL_REAL)
+                loss_dis += adv_loss(y_fake.detach(), loss.LABEL_FAKE)
+                # loss_dis += info_loss(c_real, c_true)
 
                 loss_dis.backward()
                 opt_dis.step()
@@ -103,8 +118,8 @@ class Trainer(object):
                 # log
                 if self.iteration % self.configs["log_interval"] == 0:
                     self.logger.log()
-                    self.logger.tf_log()
-                    self.logger.clear()
+                    self.logger.log_tensorboard("iteration")
+                    # self.logger.clear()
 
                 # # snapshot models
                 # if iteration % configs["snapshot_interval"] == 0:

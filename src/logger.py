@@ -1,8 +1,10 @@
 import enum
 import logging
+import sys
 import time
 from collections import OrderedDict
 from pathlib import Path
+from pprint import pprint
 from typing import Any, Dict, List
 
 import colorlog
@@ -64,7 +66,6 @@ class Logger(object):
     """
 
     def __init__(self, out_path: Path, tb_path: Path):
-
         # initialize logging module
         self._logger: logging.Logger = new_logging_module(__name__, out_path / "log")
 
@@ -141,10 +142,18 @@ class Logger(object):
 
         self._logger.info(log_string)
 
-    def log_tensorboard(self) -> None:
-        step: int = self.metrics["iteration"].value
+    def log_tensorboard(self, x_axis_metric: str) -> None:
+        # log MetricType.Loss metrics only
+        if x_axis_metric not in self.metric_keys():
+            raise Exception(f"No such metric: {x_axis_metric}")
+
+        x_metric = self.metrics[x_axis_metric]
+        if x_metric.mtype != MetricType.Number:
+            raise Exception(f"Invalid metric type: {repr(x_metric.mtype)}")
+
+        step = x_metric.value
         for name, metric in self.metrics.items():
-            if metric.mtype == MetricType.Loss:
+            if metric.mtype != MetricType.Loss:
                 continue
 
             mean: float = sum(metric.value) / len(metric.value)
@@ -153,6 +162,12 @@ class Logger(object):
     def tf_log_histgram(self, var, tag, step):
         var = var.clone().cpu().data.numpy()
         self.writer.add_histogram(tag, var, step)
+
+    def info(self, msg: str) -> None:
+        self._logger.info(msg)
+
+    def debug(self, msg: str) -> None:
+        self._logger.debug(msg)
 
 
 if __name__ == "__main__":

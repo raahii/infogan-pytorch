@@ -1,5 +1,6 @@
 import argparse
 import random
+import sys
 from pathlib import Path
 from typing import Dict
 
@@ -9,7 +10,7 @@ from torch.utils.data import DataLoader
 
 from dataset import new_mnist_dataset
 from logger import Logger
-from models import Discriminator, Generator
+from models import Discriminator, Generator, build_latent_variables
 from trainer import Trainer
 
 
@@ -60,12 +61,14 @@ def main():
     )
 
     # prepare models
-    gen, dis = Generator(), Discriminator()
+    latent_vars = build_latent_variables(config["latent_variables"])
+    gen = Generator(latent_vars)
+    dis = Discriminator(latent_vars)
     models = {"gen": gen, "dis": dis}
 
     # prepare optimizers
-    opt_gen = create_optimizer(gen.parameters(), **config["gen"]["optimizer"])
-    opt_dis = create_optimizer(dis.parameters(), **config["dis"]["optimizer"])
+    opt_gen = create_optimizer(gen.parameters(), **config["optimizer"]["gen"])
+    opt_dis = create_optimizer(dis.parameters(), **config["optimizer"]["dis"])
     opts = {"gen": opt_gen, "dis": opt_dis}
 
     log_path = Path(config["log_path"])
