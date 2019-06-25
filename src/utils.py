@@ -7,6 +7,13 @@ def new_tensor_module():
     return torch.cuda if torch.cuda.is_available() else torch
 
 
+def current_device():
+    if torch.cuda.is_available():
+        return torch.device("cuda:0")
+    else:
+        return torch.device("cpu")
+
+
 def images_to_numpy(tensor):
     """
     convert pytorch tensor to numpy array

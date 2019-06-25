@@ -1,8 +1,8 @@
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Union
 
 import numpy as np
+import torch
 import torch.nn as nn
-from torch.autograd import Variable
 
 import utils
 
@@ -34,7 +34,7 @@ class InfoGANLoss:
 
         self.losses = losses
 
-    def __call__(self, cs_hat: List[Variable], cs_true: List[Variable]):
+    def __call__(self, cs_hat: List[torch.Tensor], cs_true: List[torch.Tensor]):
         if len(cs_hat) != len(cs_true):
             raise Exception(
                 "Number of variables between 'c_hat' and 'c_true' is mismatch!"
@@ -54,12 +54,13 @@ class InfoGANLoss:
 class AdversarialLoss:
     def __init__(self):
         self.loss = nn.BCELoss()
+        self.device = utils.current_device()
 
-    def __call__(self, y_hat: Variable, label: int):
+    def __call__(self, y_hat: torch.Tensor, label: int):
         if label not in [LABEL_REAL, LABEL_FAKE]:
             raise Exception("Invalid label is passed to adversarial loss")
 
-        y_true = tensor.FloatTensor(y_hat.size()).fill_(label)
+        y_true = torch.full(y_hat.size(), label, device=self.device)
         return self.loss(y_hat, y_true)
 
 

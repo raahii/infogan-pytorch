@@ -3,8 +3,13 @@ n_epochs: 40
 seed: 0
 
 log_path: "result/debug"
+gen_img_path: "result/debug/imgs"
 tensorboard_path: "result/debug/runs"
+
+# itnervals
 log_interval: 1
+snapshot_interval: 1
+log_samples_interval: 5
 
 latent_variables:
   - 

@@ -1,0 +1,66 @@
+experiment_name: "mnist"
+n_epochs: 40
+seed: 0
+
+log_path: "result/mnist"
+gen_img_path: "result/mnist/imgs"
+tensorboard_path: "result/mnist/runs"
+
+# itnervals
+log_interval: 100
+snapshot_interval: 100
+log_samples_interval: 500
+
+latent_variables:
+  - 
+    name: "z"
+    kind: "z"
+    prob: "normal"
+    dim: 128
+    min: 0
+    max: 1
+
+  #   name: "c1"
+  #   kind: "c"
+  #   prob: "categorical"
+  #   dim: 1
+  #   k: 10
+  #
+  # - 
+  #   name: "c2"
+  #   kind: "c"
+  #   prob: "normal"
+  #   dim: 1
+  #   min: -1
+  #   max: 1
+  #
+  # - 
+  #   name: "c3"
+  #   kind: "c"
+  #   prob: "normal"
+  #   dim: 1
+  #   min: -1
+  #   max: 1
+
+training:
+  log_interval:         100
+  log_samples_interval: 5000
+  snapshot_interval:    5000
+  evaluation_interval:  60000
+
+dataset:
+  path: "data"
+  name: "mnist"
+  batchsize: 100
+  n_workers: 4
+  height: 28
+  width: 28
+  number_limit: -1
+
+optimizer:
+  gen:
+    lr: 0.0002
+    decay: 0.00001
+  dis:
+    lr: 0.0002
+    decay: 0.00001

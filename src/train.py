@@ -73,6 +73,8 @@ def main():
 
     log_path = Path(config["log_path"])
     log_path.mkdir(parents=True, exist_ok=True)
+    gen_img_path = Path(config["gen_img_path"])
+    gen_img_path.mkdir(parents=True, exist_ok=True)
     tb_path = Path(config["tensorboard_path"])
     tb_path.mkdir(parents=True, exist_ok=True)
 

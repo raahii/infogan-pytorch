@@ -9,6 +9,7 @@ from typing import Any, Dict, List
 
 import colorlog
 import numpy as np
+import torch
 from tensorboardX import SummaryWriter
 
 
@@ -161,7 +162,10 @@ class Logger(object):
 
     def tf_log_histgram(self, var, tag, step):
         var = var.clone().cpu().data.numpy()
-        self.writer.add_histogram(tag, var, step)
+        self.tf_writer.add_histogram(tag, var, step)
+
+    def tf_log_image(self, x: torch.Tensor, step: int, tag: str):
+        self.tf_writer.add_image(tag, x, step)
 
     def info(self, msg: str) -> None:
         self._logger.info(msg)

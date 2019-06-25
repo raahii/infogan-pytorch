@@ -9,7 +9,7 @@ from torch.utils.data import DataLoader
 
 def new_mnist_dataset(root_path: Union[str, Path]) -> torch.utils.data.Dataset:
     transform = transforms.Compose(
-        [transforms.Resize(28), transforms.CenterCrop(28), transforms.ToTensor()]
+        [transforms.Resize(64), transforms.CenterCrop(64), transforms.ToTensor()]
     )
 
     dataset = torchvision.datasets.MNIST(

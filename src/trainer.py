@@ -1,11 +1,13 @@
 import random
-from typing import Dict
+from pathlib import Path
+from typing import Any, Dict
 
 import numpy as np
 import torch
+import torchvision
 from torch import nn
-from torch.optim import Optimizer
 from torch.utils.data import DataLoader
+from torchvision.utils import make_grid, save_image
 
 import loss
 from logger import Logger, MetricType
@@ -16,7 +18,7 @@ class Trainer(object):
         self,
         dataloader: DataLoader,
         models: Dict[str, nn.Module],
-        optimizers: Dict[str, Optimizer],
+        optimizers: Dict[str, Any],
         configs: Dict,
         logger: Logger,
     ):
@@ -26,11 +28,11 @@ class Trainer(object):
         self.optimizers = optimizers
         self.configs = configs
 
-        self.device = (
-            torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
-        )
+        self.use_cuda = torch.cuda.is_available()
+        self.device = torch.device("cuda") if self.use_cuda else torch.device("cpu")
 
         self.logger = logger
+        self.gen_img_path = Path(configs["gen_img_path"])
 
         self.iteration = 0
         self.epoch = 0
@@ -52,10 +54,19 @@ class Trainer(object):
             dis.state_dict(), str(self.log_dir / "dis_{:05d}.pytorch".format(epoch))
         )
 
+    def generate_samples(self, gen: nn.Module, step: int):
+        x = x.repeat(1, 3, 1, 1)
+        # x_grid = torchvision.utils.make_grid(x, 5, normalize=True)
+        # self.logger.tf_log_image(x_grid, step, "x_fake")
+        # print("samples")
+
+    def dataset_samples(self, x: torch.Tensor, step: int):
+        torchvision.utils.save_image(x, self.gen_img_path / f"data_{step}.jpg", nrow=5)
+
     def train(self):
         # retrieve models and move them if necessary
         gen, dis = self.models["gen"], self.models["dis"]
-        if torch.cuda.is_available():
+        if self.use_cuda:
             gen.cuda()
             dis.cuda()
 
@@ -64,14 +75,13 @@ class Trainer(object):
         opt_dis = self.optimizers["dis"]
 
         adv_loss = loss.AdversarialLoss()
-        info_loss = loss.InfoGANLoss(self.configs["latent_variables"])
+        # info_loss = loss.InfoGANLoss(self.configs["latent_variables"])
 
         # Define metrics
         self.logger.define("iteration", MetricType.Number)
         self.logger.define("epoch", MetricType.Number)
         self.logger.define("loss_gen", MetricType.Loss)
         self.logger.define("loss_dis", MetricType.Loss)
-        print(self.logger.metric_keys())
 
         # Start training
         self.logger.info(f"Start training, device: {self.device}")
@@ -82,12 +92,39 @@ class Trainer(object):
                 self.iteration += 1
                 batchsize = len(x_real)
 
-                # phase for generator ---
                 gen.train()
-                opt_gen.zero_grad()
+                dis.train()
 
+                ############################
+                # Update Discriminator:
+                #  maximize log(D(x)) + log(1 - D(G(z)))
+                ############################
+                opt_dis.zero_grad()
+
+                # train with real
+                x_real = x_real.cuda() if self.use_cuda else x_real
+                y_real, c_real = dis(x_real)
+                loss_dis_real = adv_loss(y_real, loss.LABEL_REAL)
+
+                loss_dis_real.backward()
+
+                # train with fake
                 x_fake = gen.infer(batchsize)
                 y_fake, c_fake = dis(x_fake.detach())
+                loss_dis_fake = adv_loss(y_fake, loss.LABEL_FAKE)
+
+                loss_dis_fake.backward()
+                opt_dis.step()
+
+                loss_dis = loss_dis_real + loss_dis_fake
+
+                ############################
+                # Update Generator:
+                #  maximize log(D(G(z)))
+                ###########################
+                opt_gen.zero_grad()
+
+                y_fake, c_fake = dis(x_fake)
 
                 # compute loss as fake samples are real
                 loss_gen = adv_loss(y_fake, loss.LABEL_REAL)
@@ -95,19 +132,6 @@ class Trainer(object):
 
                 loss_gen.backward()
                 opt_gen.step()
-
-                # phase generator
-                dis.train()
-                opt_dis.zero_grad()
-
-                y_real, c_real = dis(x_real)
-
-                loss_dis = adv_loss(y_real, loss.LABEL_REAL)
-                loss_dis += adv_loss(y_fake.detach(), loss.LABEL_FAKE)
-                # loss_dis += info_loss(c_real, c_true)
-
-                loss_dis.backward()
-                opt_dis.step()
 
                 # update metric
                 self.logger.update("iteration", self.iteration)
@@ -125,9 +149,17 @@ class Trainer(object):
                 # if iteration % configs["snapshot_interval"] == 0:
                 #     self.snapshot_models(sgen, cgen, idis, vdis, iteration)
 
-                # # log samples
-                # if iteration % configs["log_samples_interval"] == 0:
-                #     self.generate_samples(sgen, cgen, iteration)
+                # log samples
+                if self.iteration % self.configs["log_samples_interval"] == 0:
+                    gen.eval()
+                    with torch.no_grad():
+                        x = gen.infer(25)
+
+                    x = make_grid(x, 5, normalize=True, scale_each=True)
+                    self.logger.tf_log_image(x, self.iteration, "x_fake")
+                    torchvision.utils.save_image(
+                        x, self.gen_img_path / f"gen_{self.iteration}.jpg"
+                    )
 
                 # evaluate generated samples
                 # if iteration % configs["evaluation_interval"] == 0:

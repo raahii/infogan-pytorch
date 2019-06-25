@@ -1,6 +1,5 @@
-import abc
+from abc import ABCMeta
 from collections import OrderedDict
-from functools import reduce
 from typing import Any, Dict, List, Sequence, Tuple, TypeVar, Union
 
 import numpy as np
@@ -9,24 +8,23 @@ import torch.distributions as dist
 import torch.nn as nn
 import torch.nn.functional as F
 import torch.nn.init as init
-from torch.autograd import Variable
+from torch import cuda
 
 import utils
 
 tensor = utils.new_tensor_module()
-FloatTensor = Union[torch.FloatTensor, torch.cuda.FloatTensor]
 
 
 params = {"img_w": 28, "img_h": 28, "dim_z": 62, "dim_c": 12}
 
 
-def init_normal(layer):
-    if type(layer) in [nn.Conv2d, nn.ConvTranspose2d]:
-        # print(layer)
-        init.normal_(layer.weight.data, 0, 0.02)
-    elif type(layer) in [nn.BatchNorm2d]:
-        init.normal_(layer.weight.data, 1.0, 0.02)
-        init.constant_(layer.bias.data, 0.0)
+def weights_init(m):
+    classname = m.__class__.__name__
+    if classname.find("Conv") != -1:
+        m.weight.data.normal_(0.0, 0.02)
+    elif classname.find("BatchNorm") != -1:
+        m.weight.data.normal_(1.0, 0.02)
+        m.bias.data.fill_(0)
 
 
 class LatentVariable(object):
@@ -38,7 +36,7 @@ class LatentVariable(object):
 
         # define probability distribution
         if prob == "normal":
-            klass = dist.normal.Normal(kwargs["min"], kwargs["max"])
+            klass: Any = dist.normal.Normal(kwargs["min"], kwargs["max"])
             self.dim: int = dim
         elif prob == "uniform":
             klass = dist.uniform.Uniform(kwargs["min"], kwargs["max"])
@@ -83,19 +81,19 @@ class Categorical:
 
         self.k = k
 
-        p = torch.FloatTensor(k).fill_(1 / k)
+        p = tensor.empty(k).fill_(1 / k)
         self.prob = _Categorical(p)
 
-    def one_hot(self, x: FloatTensor) -> FloatTensor:
+    def one_hot(self, x: torch.Tensor) -> torch.Tensor:
         b, c = tuple(x.shape)
         _x = torch.unsqueeze(x, 2)
-        oh = torch.FloatTensor(b, c, self.k).zero_()
+        oh = tensor.empty(b, c, self.k).zero_()
         oh.scatter_(2, _x, 1)
         oh = oh.view(b, c * self.k)
 
         return oh
 
-    def sample(self, shape: Sequence[int]) -> FloatTensor:
+    def sample(self, shape: Sequence[int]) -> torch.Tensor:
         x = self.prob.sample(shape)
         x = self.one_hot(x)
 
@@ -108,44 +106,57 @@ class Generator(nn.Module):
 
         self.latent_vars = latent_vars
         self.dim_input = sum(map(lambda x: x.dim, latent_vars))
+        ngf = 64
 
         # main layers
         self.main = nn.Sequential(
-            nn.ConvTranspose2d(self.dim_input, 1024, 1, 1, bias=False),
-            nn.BatchNorm2d(1024),
-            nn.ReLU(),
-            nn.ConvTranspose2d(1024, 128, 7, 1, bias=False),
-            nn.BatchNorm2d(128),
-            nn.ReLU(),
-            nn.ConvTranspose2d(128, 64, 4, 2, padding=1, bias=False),
-            nn.BatchNorm2d(64),
-            nn.ReLU(),
-            nn.ConvTranspose2d(64, 1, 4, 2, padding=1, bias=False),
-            nn.Sigmoid(),
+            # input is Z, going into a convolution
+            nn.ConvTranspose2d(self.dim_input, ngf * 8, 4, 1, 0, bias=False),
+            nn.BatchNorm2d(ngf * 8),
+            nn.ReLU(True),
+            # state size. (ngf*8) x 4 x 4
+            nn.ConvTranspose2d(ngf * 8, ngf * 4, 4, 2, 1, bias=False),
+            nn.BatchNorm2d(ngf * 4),
+            nn.ReLU(True),
+            # state size. (ngf*4) x 8 x 8
+            nn.ConvTranspose2d(ngf * 4, ngf * 2, 4, 2, 1, bias=False),
+            nn.BatchNorm2d(ngf * 2),
+            nn.ReLU(True),
+            # state size. (ngf*2) x 16 x 16
+            nn.ConvTranspose2d(ngf * 2, ngf, 4, 2, 1, bias=False),
+            nn.BatchNorm2d(ngf),
+            nn.ReLU(True),
+            # state size. (ngf) x 32 x 32
+            nn.ConvTranspose2d(ngf, 1, 4, 2, 1, bias=False),
+            nn.Tanh()
+            # state size. (nc) x 64 x 64
         )
+        self.use_cuda = torch.cuda.is_available()
+        self.apply(weights_init)
 
-        self.apply(init_normal)
-
-    def forward(self, x: Variable) -> Variable:
+    def forward(self, x):
         return self.main(x)
 
-    def forward_dummy(self) -> Variable:
+    def forward_dummy(self) -> torch.Tensor:
         shape = (2, self.dim_input, 1, 1)
-        dummy_tensor = Variable(tensor.FloatTensor(*shape).normal_())
+        dummy_tensor = tensor.empty(shape).normal_()
         return self.forward(dummy_tensor)
 
-    def sample_z(self, batchsize: int) -> Variable:
-        zs: List[FloatTensor] = []
+    def sample_z(self, batchsize: int) -> torch.Tensor:
+        zs: List[torch.Tensor] = []
         for var in self.latent_vars:
             z = var.prob.sample([batchsize, var.dim])
             zs.append(z)
 
-        lv: FloatTensor = torch.cat(zs, dim=1)
+        lv = torch.cat(zs, dim=1)
         lv = lv.unsqueeze(-1).unsqueeze(-1)  # expand to image map
 
-        return Variable(lv)
+        if self.use_cuda:
+            lv = lv.cuda()
 
-    def infer(self, n_samples: int) -> Variable:
+        return lv
+
+    def infer(self, n_samples: int) -> torch.Tensor:
         z = self.sample_z(n_samples)
         x = self.forward(z)
         return x
@@ -157,47 +168,59 @@ class Discriminator(nn.Module):
 
         self.latent_vars = latent_vars
         self.dim_output = sum(map(lambda x: x.dim, latent_vars))
+        ndf = 64
 
         self.main = nn.Sequential(
-            nn.Conv2d(1, 64, 4, 2, 1),
-            nn.LeakyReLU(),
-            nn.Conv2d(64, 128, 4, 2, 1, bias=False),
-            nn.BatchNorm2d(128),
-            nn.LeakyReLU(),
-            nn.Conv2d(128, 1024, 7, bias=False),
-            nn.BatchNorm2d(1024),
-            nn.LeakyReLU(),
+            # input is (nc) x 64 x 64
+            nn.Conv2d(1, ndf, 4, 2, 1, bias=False),
+            nn.LeakyReLU(0.2, inplace=True),
+            # state size. (ndf) x 32 x 32
+            nn.Conv2d(ndf, ndf * 2, 4, 2, 1, bias=False),
+            nn.BatchNorm2d(ndf * 2),
+            nn.LeakyReLU(0.2, inplace=True),
+            # state size. (ndf*2) x 16 x 16
+            nn.Conv2d(ndf * 2, ndf * 4, 4, 2, 1, bias=False),
+            nn.BatchNorm2d(ndf * 4),
+            nn.LeakyReLU(0.2, inplace=True),
+            # state size. (ndf*4) x 8 x 8
+            nn.Conv2d(ndf * 4, ndf * 8, 4, 2, 1, bias=False),
+            nn.BatchNorm2d(ndf * 8),
+            nn.LeakyReLU(0.2, inplace=True),
         )
 
-        self.d_head: nn.Module = DHead()
+        self.d_head: nn.Module = DHead(ndf)
         self.q_heads: List[nn.Module] = []  # TODO
 
         # setup output structure from latent variables configuration
-        self.apply(init_normal)
+        self.apply(weights_init)
 
-    def forward(self, x: Variable) -> Tuple[Variable, List[Variable]]:
+    def forward(self, x):
         mid = self.main(x)
 
         y = self.d_head(mid)
-        c: List[Variable] = []  # TODO: implement c vars
+        c: List[torch.Tensor] = []  # TODO: implement c vars
 
         return y, c
 
-    def forward_dummy(self) -> Tuple[Variable, List[Variable]]:
+    def forward_dummy(self) -> Tuple[torch.Tensor, List[torch.Tensor]]:
         shape = (2, 1, params["img_h"], params["img_w"])
-        dummy_tensor = Variable(tensor.FloatTensor(*shape).normal_())
+        dummy_tensor = tensor.empty(shape).normal_()
 
         return self.forward(dummy_tensor)
 
 
 class DHead(nn.Module):
-    def __init__(self):
+    def __init__(self, ndf: int):
         super().__init__()
-        self.conv = nn.Conv2d(1024, 1, 1)
+        self.main = nn.Sequential(
+            # state size. (ndf*8) x 4 x 4
+            nn.Conv2d(ndf * 8, 1, 4, 1, 0, bias=False),
+            nn.Sigmoid(),
+        )
+        self.apply(weights_init)
 
     def forward(self, x):
-        output = torch.sigmoid(self.conv(x))
-        return output
+        return self.main(x)
 
 
 if __name__ == "__main__":
