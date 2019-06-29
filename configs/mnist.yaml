@@ -17,27 +17,28 @@ latent_variables:
     kind: "z"
     prob: "normal"
     dim: 128
-    min: 0
-    max: 1
+    mu: 0
+    var: 1
 
-  #   name: "c1"
-  #   kind: "c"
-  #   prob: "categorical"
-  #   dim: 1
-  #   k: 10
-  #
-  # - 
-  #   name: "c2"
-  #   kind: "c"
-  #   prob: "normal"
-  #   dim: 1
-  #   min: -1
-  #   max: 1
-  #
+  - 
+    name: "c1"
+    kind: "c"
+    prob: "categorical"
+    dim: 1
+    k: 10
+
+  - 
+    name: "c2"
+    kind: "c"
+    prob: "normal"
+    dim: 1
+    mu: 0
+    var: 1
+
   # - 
   #   name: "c3"
   #   kind: "c"
-  #   prob: "normal"
+  #   prob: "uniform"
   #   dim: 1
   #   min: -1
   #   max: 1

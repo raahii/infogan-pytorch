@@ -27,6 +27,7 @@ class Trainer(object):
         self.models = models
         self.optimizers = optimizers
         self.configs = configs
+        self.latent_vars = models["gen"].latent_vars
 
         self.use_cuda = torch.cuda.is_available()
         self.device = torch.device("cuda") if self.use_cuda else torch.device("cpu")
@@ -54,11 +55,11 @@ class Trainer(object):
             dis.state_dict(), str(self.log_dir / "dis_{:05d}.pytorch".format(epoch))
         )
 
-    def generate_samples(self, gen: nn.Module, step: int):
-        x = x.repeat(1, 3, 1, 1)
-        # x_grid = torchvision.utils.make_grid(x, 5, normalize=True)
-        # self.logger.tf_log_image(x_grid, step, "x_fake")
-        # print("samples")
+    # def generate_samples(self, gen: nn.Module, step: int):
+    #     x = x.repeat(1, 3, 1, 1)
+    #     # x_grid = torchvision.utils.make_grid(x, 5, normalize=True)
+    #     # self.logger.tf_log_image(x_grid, step, "x_fake")
+    #     # print("samples")
 
     def dataset_samples(self, x: torch.Tensor, step: int):
         torchvision.utils.save_image(x, self.gen_img_path / f"data_{step}.jpg", nrow=5)
@@ -66,16 +67,22 @@ class Trainer(object):
     def train(self):
         # retrieve models and move them if necessary
         gen, dis = self.models["gen"], self.models["dis"]
+        dhead, qhead = self.models["dhead"], self.models["qhead"]
+
+        adv_loss = loss.AdversarialLoss()
+        info_loss = loss.InfoGANLoss(self.latent_vars)
+
         if self.use_cuda:
             gen.cuda()
             dis.cuda()
+            dhead.cuda()
+            qhead.cuda()
+            adv_loss.cuda()
+            info_loss.cuda()
 
         # retrieve optimizers
         opt_gen = self.optimizers["gen"]
         opt_dis = self.optimizers["dis"]
-
-        adv_loss = loss.AdversarialLoss()
-        # info_loss = loss.InfoGANLoss(self.configs["latent_variables"])
 
         # Define metrics
         self.logger.define("iteration", MetricType.Number)
@@ -88,12 +95,14 @@ class Trainer(object):
         self.logger.print_header()
         for i in range(self.configs["n_epochs"]):
             self.epoch += 1
-            for x_real, c_true in iter(self.dataloader):
+            for x_real, _ in iter(self.dataloader):
                 self.iteration += 1
                 batchsize = len(x_real)
 
                 gen.train()
                 dis.train()
+                dhead.train()
+                qhead.train()
 
                 ############################
                 # Update Discriminator:
@@ -103,14 +112,14 @@ class Trainer(object):
 
                 # train with real
                 x_real = x_real.cuda() if self.use_cuda else x_real
-                y_real, c_real = dis(x_real)
+                y_real = dhead(dis(x_real))
                 loss_dis_real = adv_loss(y_real, loss.LABEL_REAL)
-
                 loss_dis_real.backward()
 
                 # train with fake
-                x_fake = gen.infer(batchsize)
-                y_fake, c_fake = dis(x_fake.detach())
+                zs = gen.sample_latent_vars(batchsize)
+                x_fake = gen.infer(list(zs.values()))
+                y_fake = dhead(dis(x_fake.detach()))
                 loss_dis_fake = adv_loss(y_fake, loss.LABEL_FAKE)
 
                 loss_dis_fake.backward()
@@ -124,11 +133,15 @@ class Trainer(object):
                 ###########################
                 opt_gen.zero_grad()
 
-                y_fake, c_fake = dis(x_fake)
+                mid = dis(x_fake)
+                y_fake, c_fake = dhead(mid), qhead(mid)
 
                 # compute loss as fake samples are real
                 loss_gen = adv_loss(y_fake, loss.LABEL_REAL)
-                # loss_gen += info_loss(c_fake, c_true)
+
+                # compute infogan loss
+                c_true = {k: zs[k] for k in c_fake.keys()}
+                loss_gen += info_loss(c_fake, c_true)
 
                 loss_gen.backward()
                 opt_gen.step()

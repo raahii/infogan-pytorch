@@ -5,50 +5,36 @@ import torch
 import torch.nn as nn
 
 import utils
-
-tensor = utils.new_tensor_module()
+from models import LatentVariable
 
 LABEL_REAL, LABEL_FAKE = 1, 0
 
 
 class InfoGANLoss:
-    def __init__(self, lv_config: Dict):
-        self.nnl_loss = NormalNLLLoss()
-        self.ce_loss = nn.CrossEntropyLoss()
+    def __init__(self, latent_vars: Dict[str, LatentVariable]):
+        self.latent_vars = latent_vars
 
-        # parse config for latent variales
-        losses: List[Any] = []
-        for conf in lv_config:
-            if conf["kind"] == "z":
-                continue
+        self.discrete_loss = nn.CrossEntropyLoss()
+        self.continuous_loss = NormalNLLLoss()
+        self.device = utils.current_device()
 
-            # discrete probability distribution
-            if conf["prob"] in ["categorical"]:
-                losses.append(self.ce_loss)
-            elif conf["prob"] in ["normal"]:
-                losses.append(self.ce_loss)
-            else:
-                raise Exception(
-                    "Invalid ditribution is defined in configuration of latent variable"
-                )
+    def __call__(
+        self, cs_hat: Dict[str, torch.Tensor], cs_true: Dict[str, List[torch.Tensor]]
+    ) -> torch.Tensor:
+        if cs_hat.keys() != cs_true.keys():
+            raise Exception("The keys of cs_hat is different from cs_true")
 
-        self.losses = losses
+        loss: torch.Tensor = torch.zeros(1, device=self.device)
+        for key in cs_hat.keys():
+            c_hat: torch.Tensor = cs_hat[key]
+            c_true: List[torch.Tensor] = cs_true[key]
 
-    def __call__(self, cs_hat: List[torch.Tensor], cs_true: List[torch.Tensor]):
-        if len(cs_hat) != len(cs_true):
-            raise Exception(
-                "Number of variables between 'c_hat' and 'c_true' is mismatch!"
-                + f"expected: {len(cs_hat)}"
-                + f"actual: {len(cs_true)}"
-            )
+            if self.latent_vars[key].prob_name == "categorical":
+                loss += self.discrete_loss(c_hat, c_true[0])
+            elif self.latent_vars[key].prob_name == "normal":
+                loss += self.continuous_loss(c_hat, c_true[0], c_true[1])
 
-        if len(cs_true) != self.losses:
-            raise Exception(
-                "Number of variables 'c' is mismatch!"
-                + f"expected: {len(self.losses)}"
-                + f"actual: {len(cs_true)}"
-            )
-        pass
+        return loss
 
 
 class AdversarialLoss:
