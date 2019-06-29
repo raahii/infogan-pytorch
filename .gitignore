@@ -6,4 +6,3 @@ data/*
 result/*
 notebooks/*
 !.gitkeep
-

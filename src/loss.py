@@ -1,3 +1,4 @@
+import functools
 from typing import Any, Dict, List, Union
 
 import numpy as np
@@ -19,22 +20,23 @@ class InfoGANLoss:
         self.device = utils.current_device()
 
     def __call__(
-        self, cs_hat: Dict[str, torch.Tensor], cs_true: Dict[str, List[torch.Tensor]]
+        self, cs_hat: Dict[str, List[torch.Tensor]], cs_true: Dict[str, torch.Tensor]
     ) -> torch.Tensor:
         if cs_hat.keys() != cs_true.keys():
             raise Exception("The keys of cs_hat is different from cs_true")
 
-        loss: torch.Tensor = torch.zeros(1, device=self.device)
+        losses: List[torch.Tensor] = []
         for key in cs_hat.keys():
-            c_hat: torch.Tensor = cs_hat[key]
-            c_true: List[torch.Tensor] = cs_true[key]
+            c_hat: List[torch.Tensor] = cs_hat[key]
+            c_true: torch.Tensor = cs_true[key]
 
             if self.latent_vars[key].prob_name == "categorical":
-                loss += self.discrete_loss(c_hat, c_true[0])
-            elif self.latent_vars[key].prob_name == "normal":
-                loss += self.continuous_loss(c_hat, c_true[0], c_true[1])
+                _, targets = c_true.max(dim=1)
+                losses.append(self.discrete_loss(c_hat[0], targets))
+            elif self.latent_vars[key].prob_name == "uniform":
+                losses.append(self.continuous_loss(c_true, c_hat[0], c_hat[1]))
 
-        return loss
+        return functools.reduce(lambda x, y: x + y, losses)
 
 
 class AdversarialLoss:

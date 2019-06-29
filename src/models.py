@@ -11,8 +11,6 @@ from torch import cuda
 
 import utils
 
-tensor = utils.new_tensor_module()
-
 
 def weights_init(m):
     classname = m.__class__.__name__
@@ -40,6 +38,9 @@ class LatentVariable(object):
         elif prob == "categorical":
             klass = Categorical(kwargs["k"])
             self.cdim: int = dim * kwargs["k"]
+            # k = kwargs["k"]
+            # p = torch.full((k,), 1.0 / k)
+            # klass = dist.categorical.Categorical(p)
 
         self.prob: dist.Distribution = klass
         self.params = kwargs
@@ -85,13 +86,13 @@ class Categorical:
 
         self.k = k
 
-        p = tensor.empty(k).fill_(1 / k)
+        p = torch.empty(k).fill_(1 / k)
         self.prob = _Categorical(p)
 
     def one_hot(self, x: torch.Tensor) -> torch.Tensor:
         b, c = tuple(x.shape)
         _x = torch.unsqueeze(x, 2)
-        oh = tensor.empty(b, c, self.k).zero_()
+        oh = torch.empty(b, c, self.k).zero_()
         oh.scatter_(2, _x, 1)
         oh = oh.view(b, c * self.k)
 
@@ -111,6 +112,7 @@ class Generator(nn.Module):
         self.latent_vars = latent_vars
         self.dim_input = sum(map(lambda x: x.cdim, latent_vars.values()))
         ngf = 64
+        self.device = utils.current_device()
 
         # main layers
         self.main = nn.Sequential(
@@ -143,7 +145,7 @@ class Generator(nn.Module):
 
     def forward_dummy(self) -> torch.Tensor:
         shape = (2, self.dim_input, 1, 1)
-        dummy_tensor = tensor.empty(shape).normal_()
+        dummy_tensor = torch.empty(shape, device=self.device).normal_()
         return self.forward(dummy_tensor)
 
     def sample_latent_vars(self, batchsize: int) -> Dict[str, torch.Tensor]:
@@ -172,6 +174,7 @@ class Discriminator(nn.Module):
         self.latent_vars = latent_vars
         self.dim_output = sum(map(lambda x: x.cdim, latent_vars.values()))
         ndf = 64
+        self.device = utils.current_device()
 
         self.main = nn.Sequential(
             # input is (nc) x 64 x 64
@@ -200,7 +203,7 @@ class Discriminator(nn.Module):
 
     def forward_dummy(self) -> Tuple[torch.Tensor, List[torch.Tensor]]:
         shape = (2, 1, 64, 64)
-        dummy_tensor = tensor.empty(shape).normal_()
+        dummy_tensor = torch.empty(shape, device=self.device).normal_()
 
         return self.forward(dummy_tensor)
 
@@ -237,7 +240,7 @@ class QHead(nn.Module):
             if var.kind == "z":
                 continue
 
-            if var.prob_name == "normal":
+            if var.prob_name == "uniform":
                 # normal distribution: estimate mu and var
                 convs = [
                     nn.Conv2d(ndf * 2, var.cdim, 1),
@@ -248,7 +251,7 @@ class QHead(nn.Module):
                 convs = [nn.Conv2d(ndf * 2, var.cdim, 1)]
 
             for i, conv in enumerate(convs):
-                conv.apply(weights_init)
+                # conv.apply(weights_init)
                 setattr(self, f"conv_{name}_{i}", conv)
 
             self.convs[name] = convs
@@ -258,7 +261,7 @@ class QHead(nn.Module):
 
         y: Dict[str, torch.Tensor] = {}
         for name, convs in self.convs.items():
-            y[name] = [conv(mid) for conv in convs]
+            y[name] = [conv(mid).squeeze() for conv in convs]
 
         return y
 

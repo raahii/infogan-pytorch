@@ -10,6 +10,7 @@ from torch.utils.data import DataLoader
 from torchvision.utils import make_grid, save_image
 
 import loss
+import utils
 from logger import Logger, MetricType
 
 
@@ -30,7 +31,7 @@ class Trainer(object):
         self.latent_vars = models["gen"].latent_vars
 
         self.use_cuda = torch.cuda.is_available()
-        self.device = torch.device("cuda") if self.use_cuda else torch.device("cpu")
+        self.device = utils.current_device()
 
         self.logger = logger
         self.gen_img_path = Path(configs["gen_img_path"])
@@ -55,14 +56,36 @@ class Trainer(object):
             dis.state_dict(), str(self.log_dir / "dis_{:05d}.pytorch".format(epoch))
         )
 
-    # def generate_samples(self, gen: nn.Module, step: int):
-    #     x = x.repeat(1, 3, 1, 1)
-    #     # x_grid = torchvision.utils.make_grid(x, 5, normalize=True)
-    #     # self.logger.tf_log_image(x_grid, step, "x_fake")
-    #     # print("samples")
-
     def dataset_samples(self, x: torch.Tensor, step: int):
         torchvision.utils.save_image(x, self.gen_img_path / f"data_{step}.jpg", nrow=5)
+
+    def gen_random_images(self, gen: nn.Module):
+        gen.eval()
+        with torch.no_grad():
+            zs = gen.sample_latent_vars(25)
+            x = gen.infer(list(zs.values()))
+
+        x = make_grid(x, 5, normalize=True, scale_each=True)
+        self.logger.tf_log_image(x, self.iteration, "random")
+        torchvision.utils.save_image(
+            x, self.gen_img_path / f"gen_random_{self.iteration}.jpg"
+        )
+
+    def gen_images_per_chars(self, gen: nn.Module):
+        gen.eval()
+        with torch.no_grad():
+            zs = gen.sample_latent_vars(100)
+            idx = np.arange(10).repeat(10)
+            one_hot = np.zeros((100, 10))
+            one_hot[range(100), idx] = 1
+            zs["c1"] = torch.tensor(one_hot, device=self.device, dtype=torch.float)
+            x = gen.infer(list(zs.values()))
+
+        x = make_grid(x, 10, normalize=True, scale_each=True)
+        self.logger.tf_log_image(x, self.iteration, "chars")
+        torchvision.utils.save_image(
+            x, self.gen_img_path / f"gen_chars_{self.iteration}.jpg"
+        )
 
     def train(self):
         # retrieve models and move them if necessary
@@ -104,10 +127,7 @@ class Trainer(object):
                 dhead.train()
                 qhead.train()
 
-                ############################
-                # Update Discriminator:
-                #  maximize log(D(x)) + log(1 - D(G(z)))
-                ############################
+                # ------- discrminator phase -------
                 opt_dis.zero_grad()
 
                 # train with real
@@ -127,10 +147,7 @@ class Trainer(object):
 
                 loss_dis = loss_dis_real + loss_dis_fake
 
-                ############################
-                # Update Generator:
-                #  maximize log(D(G(z)))
-                ###########################
+                # ------- generator phase -------
                 opt_gen.zero_grad()
 
                 mid = dis(x_fake)
@@ -164,15 +181,8 @@ class Trainer(object):
 
                 # log samples
                 if self.iteration % self.configs["log_samples_interval"] == 0:
-                    gen.eval()
-                    with torch.no_grad():
-                        x = gen.infer(25)
-
-                    x = make_grid(x, 5, normalize=True, scale_each=True)
-                    self.logger.tf_log_image(x, self.iteration, "x_fake")
-                    torchvision.utils.save_image(
-                        x, self.gen_img_path / f"gen_{self.iteration}.jpg"
-                    )
+                    self.gen_random_images(gen)
+                    self.gen_images_per_chars(gen)
 
                 # evaluate generated samples
                 # if iteration % configs["evaluation_interval"] == 0:
