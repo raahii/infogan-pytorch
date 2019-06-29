@@ -65,7 +65,7 @@ class Trainer(object):
             zs = gen.sample_latent_vars(25)
             x = gen.infer(list(zs.values()))
 
-        x = make_grid(x, 5, normalize=True, scale_each=True)
+        x = make_grid(x, 5, normalize=True)  # , scale_each=True)
         self.logger.tf_log_image(x, self.iteration, "random")
         torchvision.utils.save_image(
             x, self.gen_img_path / f"gen_random_{self.iteration}.jpg"
@@ -81,7 +81,7 @@ class Trainer(object):
             zs["c1"] = torch.tensor(one_hot, device=self.device, dtype=torch.float)
             x = gen.infer(list(zs.values()))
 
-        x = make_grid(x, 10, normalize=True, scale_each=True)
+        x = make_grid(x, 10, normalize=True)
         self.logger.tf_log_image(x, self.iteration, "chars")
         torchvision.utils.save_image(
             x, self.gen_img_path / f"gen_chars_{self.iteration}.jpg"
@@ -100,8 +100,6 @@ class Trainer(object):
             dis.cuda()
             dhead.cuda()
             qhead.cuda()
-            adv_loss.cuda()
-            info_loss.cuda()
 
         # retrieve optimizers
         opt_gen = self.optimizers["gen"]
@@ -112,6 +110,7 @@ class Trainer(object):
         self.logger.define("epoch", MetricType.Number)
         self.logger.define("loss_gen", MetricType.Loss)
         self.logger.define("loss_dis", MetricType.Loss)
+        self.logger.define("loss_", MetricType.Loss)
 
         # Start training
         self.logger.info(f"Start training, device: {self.device}")

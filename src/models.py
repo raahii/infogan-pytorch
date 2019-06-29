@@ -153,15 +153,14 @@ class Generator(nn.Module):
 
         for name, var in self.latent_vars.items():
             zs[name] = var.prob.sample([batchsize, var.dim])
+            zs[name] = zs[name].to(self.device)
 
         return zs
 
     def infer(self, zs: List[torch.Tensor]) -> torch.Tensor:
         z = torch.cat(zs, dim=1)
         z = z.unsqueeze(-1).unsqueeze(-1)  # expand to image map
-
-        if self.use_cuda:
-            z = z.cuda()
+        # z = z.to(self.device)
 
         x = self.forward(z)
         return x
