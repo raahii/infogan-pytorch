@@ -11,9 +11,11 @@ import torch.optim as optim
 import yaml
 from torch.utils.data import DataLoader
 
+import loss
 from dataset import new_mnist_dataset
 from logger import Logger
-from models import DHead, Discriminator, Generator, QHead, build_latent_variables
+from models import (DHead, Discriminator, Generator, QHead,
+                    build_latent_variables)
 from trainer import Trainer
 
 
@@ -80,16 +82,17 @@ def main():
     # prepare directories
     log_path = Path(config["log_path"])
     log_path.mkdir(parents=True, exist_ok=True)
-    gen_img_path = Path(config["gen_img_path"])
-    gen_img_path.mkdir(parents=True, exist_ok=True)
     tb_path = Path(config["tensorboard_path"])
     tb_path.mkdir(parents=True, exist_ok=True)
 
-    # Initialize logger
+    # initialize logger
     logger = Logger(log_path, tb_path)
 
+    # initialize losses
+    losses = {"adv": loss.AdversarialLoss(), "info": loss.InfoGANLoss(latent_vars)}
+
     # start training
-    trainer = Trainer(dataloader, models, opts, config, logger)
+    trainer = Trainer(dataloader, models, opts, losses, config["training"], logger)
     trainer.train()
 
 

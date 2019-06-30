@@ -69,6 +69,7 @@ class Logger(object):
     def __init__(self, out_path: Path, tb_path: Path):
         # initialize logging module
         self._logger: logging.Logger = new_logging_module(__name__, out_path / "log")
+        self.path = out_path
 
         # logging metrics
         self.metrics: OrderedDict[str, Metric] = OrderedDict()

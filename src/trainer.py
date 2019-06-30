@@ -9,7 +9,6 @@ from torch import nn
 from torch.utils.data import DataLoader
 from torchvision.utils import make_grid, save_image
 
-import loss
 import utils
 from logger import Logger, MetricType
 
@@ -20,6 +19,7 @@ class Trainer(object):
         dataloader: DataLoader,
         models: Dict[str, nn.Module],
         optimizers: Dict[str, Any],
+        losses: Dict[str, Any],
         configs: Dict,
         logger: Logger,
     ):
@@ -27,14 +27,16 @@ class Trainer(object):
         self.dataloader = dataloader
         self.models = models
         self.optimizers = optimizers
+        self.losses = losses
         self.configs = configs
-        self.latent_vars = models["gen"].latent_vars
+        self.logger = logger
 
-        self.use_cuda = torch.cuda.is_available()
         self.device = utils.current_device()
 
-        self.logger = logger
-        self.gen_img_path = Path(configs["gen_img_path"])
+        self.gen_images_path = self.logger.path / "images"
+        self.model_snapshots_path = self.logger.path / "models"
+        for p in [self.gen_images_path, self.model_snapshots_path]:
+            p.mkdir(parents=True, exist_ok=True)
 
         self.iteration = 0
         self.epoch = 0
@@ -48,16 +50,12 @@ class Trainer(object):
         torch.backends.cudnn.deterministic = True
         torch.backends.cudnn.benchmark = False
 
-    def snapshot_models(self, gen, dis, epoch):
-        torch.save(
-            gen.state_dict(), str(self.log_dir / "gen_{:05d}.pytorch".format(epoch))
-        )
-        torch.save(
-            dis.state_dict(), str(self.log_dir / "dis_{:05d}.pytorch".format(epoch))
-        )
-
-    def dataset_samples(self, x: torch.Tensor, step: int):
-        torchvision.utils.save_image(x, self.gen_img_path / f"data_{step}.jpg", nrow=5)
+    def snapshot_models(self):
+        for name, model in self.models.items():
+            torch.save(
+                model.state_dict(),
+                str(self.model_snapshots_path / f"{name}_{self.iteration:05d}.pytorch"),
+            )
 
     def gen_random_images(self, gen: nn.Module):
         gen.eval()
@@ -68,10 +66,10 @@ class Trainer(object):
         x = make_grid(x, 5, normalize=True)  # , scale_each=True)
         self.logger.tf_log_image(x, self.iteration, "random")
         torchvision.utils.save_image(
-            x, self.gen_img_path / f"gen_random_{self.iteration}.jpg"
+            x, self.gen_images_path / f"random_{self.iteration}.jpg"
         )
 
-    def gen_images_per_chars(self, gen: nn.Module):
+    def gen_images_per_char(self, gen: nn.Module):
         gen.eval()
         with torch.no_grad():
             zs = gen.sample_latent_vars(100)
@@ -84,7 +82,7 @@ class Trainer(object):
         x = make_grid(x, 10, normalize=True)
         self.logger.tf_log_image(x, self.iteration, "chars")
         torchvision.utils.save_image(
-            x, self.gen_img_path / f"gen_chars_{self.iteration}.jpg"
+            x, self.gen_images_path / f"chars_{self.iteration}.jpg"
         )
 
     def train(self):
@@ -92,27 +90,22 @@ class Trainer(object):
         gen, dis = self.models["gen"], self.models["dis"]
         dhead, qhead = self.models["dhead"], self.models["qhead"]
 
-        adv_loss = loss.AdversarialLoss()
-        info_loss = loss.InfoGANLoss(self.latent_vars)
-
-        if self.use_cuda:
-            gen.cuda()
-            dis.cuda()
-            dhead.cuda()
-            qhead.cuda()
-
-        # retrieve optimizers
+        # optimizers
         opt_gen = self.optimizers["gen"]
         opt_dis = self.optimizers["dis"]
 
-        # Define metrics
+        # losses
+        adv_loss = self.losses["adv"]
+        info_loss = self.losses["info"]
+
+        # define metrics
         self.logger.define("iteration", MetricType.Number)
         self.logger.define("epoch", MetricType.Number)
         self.logger.define("loss_gen", MetricType.Loss)
         self.logger.define("loss_dis", MetricType.Loss)
         self.logger.define("loss_q", MetricType.Loss)
 
-        # Start training
+        # start training
         self.logger.info(f"Start training, device: {self.device}")
         self.logger.print_header()
         for i in range(self.configs["n_epochs"]):
@@ -176,15 +169,11 @@ class Trainer(object):
                     self.logger.log_tensorboard("iteration")
                     # self.logger.clear()
 
-                # # snapshot models
-                # if iteration % configs["snapshot_interval"] == 0:
-                #     self.snapshot_models(sgen, cgen, idis, vdis, iteration)
+                # snapshot models
+                if self.iteration % self.configs["snapshot_interval"] == 0:
+                    self.snapshot_models()
 
                 # log samples
                 if self.iteration % self.configs["log_samples_interval"] == 0:
                     self.gen_random_images(gen)
-                    self.gen_images_per_chars(gen)
-
-                # evaluate generated samples
-                # if iteration % configs["evaluation_interval"] == 0:
-                #    pass
+                    self.gen_images_per_char(gen)
