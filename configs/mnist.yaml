@@ -1,7 +1,7 @@
 experiment_name: "mnist"
 
-log_path: "result/mnist"
-tensorboard_path: "result/mnist/runs"
+log_path: "results/mnist"
+tensorboard_path: "results/mnist/runs"
 dataset:
   path: "data"
   name: "mnist"

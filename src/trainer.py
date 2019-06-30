@@ -9,6 +9,7 @@ from torch import nn
 from torch.utils.data import DataLoader
 from torchvision.utils import make_grid, save_image
 
+import loss
 import utils
 from logger import Logger, MetricType
 
@@ -20,7 +21,7 @@ class Trainer(object):
         models: Dict[str, nn.Module],
         optimizers: Dict[str, Any],
         losses: Dict[str, Any],
-        configs: Dict,
+        configs: Dict[str, Any],
         logger: Logger,
     ):
 
@@ -165,7 +166,7 @@ class Trainer(object):
                 self.logger.update("loss_dis", loss_dis.cpu().item())
                 self.logger.update("loss_q", loss_q.cpu().item())
 
-                # log
+                # log metrics
                 if self.iteration % self.configs["log_interval"] == 0:
                     self.logger.log()
                     self.logger.log_tensorboard("iteration")
@@ -175,7 +176,7 @@ class Trainer(object):
                 if self.iteration % self.configs["snapshot_interval"] == 0:
                     self.snapshot_models()
 
-                # log samples
+                # generate and save samples
                 if self.iteration % self.configs["log_samples_interval"] == 0:
                     self.gen_random_images(gen)
                     self.gen_images_per_char(gen)

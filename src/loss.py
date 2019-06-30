@@ -60,10 +60,14 @@ class NormalNLLLoss:
     Treating Q(cj | x) as a factored Gaussian.
     """
 
-    def __call__(self, x, mu, var):
-        logli = -0.5 * (var.mul(2 * np.pi) + 1e-6).log() - (x - mu).pow(2).div(
-            var.mul(2.0) + 1e-6
-        )
-        nll = -(logli.sum(1).mean())
+    def __call__(
+        self, x: torch.Tensor, mu: torch.Tensor, var: torch.Tensor
+    ) -> torch.Tensor:
+
+        eps = 1e-6
+        nll = -0.5 * torch.log(torch.mul(var, 2 * np.pi) + eps)
+        nll = nll - torch.pow(x - mu, 2)
+        nll = torch.div(nll, (torch.mul(var, 2.0) + eps))
+        nll = -torch.mean(torch.sum(nll, 1))
 
         return nll

@@ -1,7 +1,7 @@
 experiment_name: "debug"
 
-log_path: "result/debug"
-tensorboard_path: "result/debug/runs"
+log_path: "results/debug"
+tensorboard_path: "results/debug/runs"
 
 dataset:
   path: "data"
