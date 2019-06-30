@@ -1,10 +1,8 @@
 import enum
 import logging
-import sys
 import time
 from collections import OrderedDict
 from pathlib import Path
-from pprint import pprint
 from typing import Any, Dict, List
 
 import colorlog

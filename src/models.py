@@ -1,13 +1,9 @@
 from collections import OrderedDict
 from typing import Any, Dict, List, Sequence, Tuple
 
-import numpy as np
 import torch
 import torch.distributions as dist
 import torch.nn as nn
-import torch.nn.functional as F
-import torch.nn.init as init
-from torch import cuda
 
 import utils
 

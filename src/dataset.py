@@ -4,7 +4,6 @@ from typing import Union
 import torch
 import torchvision
 import torchvision.transforms as transforms
-from torch.utils.data import DataLoader
 
 
 def new_mnist_dataset(root_path: Union[str, Path]) -> torch.utils.data.Dataset:
@@ -20,9 +19,8 @@ def new_mnist_dataset(root_path: Union[str, Path]) -> torch.utils.data.Dataset:
 
 
 if __name__ == "__main__":
-    import pdb
+    from torch.utils.data import DataLoader
 
-    pdb.set_trace()
     dataset = new_mnist_dataset("data/mnist")
 
     dataloader = DataLoader(

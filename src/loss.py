@@ -1,7 +1,7 @@
 import functools
-from typing import Any, Dict, List, Union
+import math
+from typing import Dict, List
 
-import numpy as np
 import torch
 import torch.nn as nn
 
@@ -65,7 +65,7 @@ class NormalNLLLoss:
     ) -> torch.Tensor:
 
         eps = 1e-6
-        nll = -0.5 * torch.log(torch.mul(var, 2 * np.pi) + eps)
+        nll = -0.5 * torch.log(torch.mul(var, 2 * math.pi) + eps)
         nll = nll - torch.pow(x - mu, 2)
         nll = torch.div(nll, (torch.mul(var, 2.0) + eps))
         nll = -torch.mean(torch.sum(nll, 1))
