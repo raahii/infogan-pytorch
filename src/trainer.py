@@ -89,6 +89,8 @@ class Trainer(object):
         # retrieve models and move them if necessary
         gen, dis = self.models["gen"], self.models["dis"]
         dhead, qhead = self.models["dhead"], self.models["qhead"]
+        gen, dis = gen.to(self.device), dis.to(self.device)
+        dhead, qhead = dhead.to(self.device), qhead.to(self.device)
 
         # optimizers
         opt_gen = self.optimizers["gen"]
@@ -123,7 +125,7 @@ class Trainer(object):
                 opt_dis.zero_grad()
 
                 # train with real
-                x_real = x_real.cuda() if self.use_cuda else x_real
+                x_real = x_real.to(self.device)
                 y_real = dhead(dis(x_real))
                 loss_dis_real = adv_loss(y_real, loss.LABEL_REAL)
                 loss_dis_real.backward()

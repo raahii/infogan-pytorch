@@ -137,7 +137,6 @@ class Generator(nn.Module):
             nn.Tanh()
             # state size. (nc) x 64 x 64
         )
-        self.use_cuda = torch.cuda.is_available()
         self.apply(weights_init)
 
     def forward(self, x):
