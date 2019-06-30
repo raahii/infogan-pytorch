@@ -1,15 +1,14 @@
-experiment_name: "mnist"
+# add noise to discriminator layers
+experiment_name: "mnist_with_noise"
 
-log_path: "results/mnist"
-tensorboard_path: "results/mnist/runs"
+log_path: "results/mnist_with_noise"
+tensorboard_path: "results/mnist_with_noise/runs"
+
 dataset:
   path: "data"
   name: "mnist"
   batchsize: 200
   n_workers: 8
-  # height: 64
-  # width: 64
-  # number_limit: -1
 
 training:
   n_epochs: 500
@@ -18,7 +17,6 @@ training:
   snapshot_interval: 1000
   log_samples_interval: 1000
 
-
 optimizer:
   gen:
     lr: 0.0002
@@ -26,6 +24,11 @@ optimizer:
   dis:
     lr: 0.0002
     decay: 0.00001
+
+models:
+  dis:
+    use_noise: true
+    noise_simga: 0.2
 
 latent_variables:
   - 

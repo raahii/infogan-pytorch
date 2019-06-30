@@ -44,10 +44,10 @@ def main():
         help="training configuration file",
     )
     args = parser.parse_args()
-    config = load_yaml(args.config)
+    configs = load_yaml(args.config)
 
-    dataset_name = config["dataset"]["name"]
-    dataset_path = Path(config["dataset"]["path"]) / dataset_name
+    dataset_name = configs["dataset"]["name"]
+    dataset_path = Path(configs["dataset"]["path"]) / dataset_name
 
     # prepare dataset
     if dataset_name == "mnist":
@@ -57,8 +57,8 @@ def main():
 
     dataloader = DataLoader(
         dataset,
-        batch_size=config["dataset"]["batchsize"],
-        num_workers=config["dataset"]["n_workers"],
+        batch_size=configs["dataset"]["batchsize"],
+        num_workers=configs["dataset"]["n_workers"],
         shuffle=True,
         drop_last=True,
         pin_memory=True,
@@ -66,20 +66,23 @@ def main():
     )
 
     # prepare models
-    latent_vars = build_latent_variables(config["latent_variables"])
-    gen, dis = Generator(latent_vars), Discriminator(latent_vars)
+    latent_vars = build_latent_variables(configs["latent_variables"])
+    gen, dis = (
+        Generator(latent_vars),
+        Discriminator(latent_vars, configs["models"]["dis"]),
+    )
     dhead, qhead = DHead(), QHead(latent_vars)
     models = {"gen": gen, "dis": dis, "dhead": dhead, "qhead": qhead}
 
     # prepare optimizers
-    opt_gen = create_optimizer([gen, qhead], **config["optimizer"]["gen"])
-    opt_dis = create_optimizer([dis, dhead], **config["optimizer"]["dis"])
+    opt_gen = create_optimizer([gen, qhead], **configs["optimizer"]["gen"])
+    opt_dis = create_optimizer([dis, dhead], **configs["optimizer"]["dis"])
     opts = {"gen": opt_gen, "dis": opt_dis}
 
     # prepare directories
-    log_path = Path(config["log_path"])
+    log_path = Path(configs["log_path"])
     log_path.mkdir(parents=True, exist_ok=True)
-    tb_path = Path(config["tensorboard_path"])
+    tb_path = Path(configs["tensorboard_path"])
     tb_path.mkdir(parents=True, exist_ok=True)
 
     # initialize logger
@@ -89,7 +92,7 @@ def main():
     losses = {"adv": loss.AdversarialLoss(), "info": loss.InfoGANLoss(latent_vars)}
 
     # start training
-    trainer = Trainer(dataloader, models, opts, losses, config["training"], logger)
+    trainer = Trainer(dataloader, models, opts, losses, configs["training"], logger)
     trainer.train()
 
 

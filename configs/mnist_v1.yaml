@@ -1,23 +1,20 @@
-experiment_name: "debug"
+experiment_name: "mnist"
 
-log_path: "results/debug"
-tensorboard_path: "results/debug/runs"
+log_path: "results/mnist"
+tensorboard_path: "results/mnist/runs"
 
 dataset:
   path: "data"
   name: "mnist"
-  batchsize: 20
-  n_workers: 4
-  height: 28
-  width: 28
-  number_limit: -1
+  batchsize: 200
+  n_workers: 8
 
 training:
-  n_epochs: 40
+  n_epochs: 500
   seed: 0
-  log_interval: 1
-  snapshot_interval: 5
-  log_samples_interval: 5
+  log_interval: 100
+  snapshot_interval: 1000
+  log_samples_interval: 1000
 
 optimizer:
   gen:
@@ -26,11 +23,6 @@ optimizer:
   dis:
     lr: 0.0002
     decay: 0.00001
-
-models:
-  dis:
-    use_noise: true
-    noise_simga: 0.2
 
 latent_variables:
   - 
@@ -63,4 +55,3 @@ latent_variables:
   #  dim: 1
   #  mu: 0
   #  var: 1
-

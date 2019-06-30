@@ -17,6 +17,18 @@ def weights_init(m):
         m.bias.data.fill_(0)
 
 
+class Noise(nn.Module):
+    def __init__(self, use_noise: float, sigma: float = 0.2):
+        super().__init__()
+        self.use_noise = use_noise
+        self.sigma = sigma
+
+    def forward(self, x):
+        if self.use_noise:
+            return x + self.sigma * torch.empty(x.size(), requires_grad=False).normal_()
+        return x
+
+
 class LatentVariable(object):
     def __init__(self, name: str, kind: str, prob: str, dim: int, **kwargs: Any):
         self.name: str = name
@@ -162,27 +174,36 @@ class Generator(nn.Module):
 
 
 class Discriminator(nn.Module):
-    def __init__(self, latent_vars: Dict[str, LatentVariable]):
+    def __init__(self, latent_vars: Dict[str, LatentVariable], configs: Dict[str, Any]):
         super().__init__()
 
         self.latent_vars = latent_vars
+        self.configs = configs
         self.dim_output = sum(map(lambda x: x.cdim, latent_vars.values()))
+
         ndf = 64
         self.device = utils.current_device()
 
+        use_noise: bool = configs["use_noise"]
+        noise_sigma: float = configs["use_noise"]
+
         self.main = nn.Sequential(
             # input is (nc) x 64 x 64
+            Noise(use_noise, sigma=noise_sigma),
             nn.Conv2d(1, ndf, 4, 2, 1, bias=False),
             nn.LeakyReLU(0.2, inplace=True),
             # state size. (ndf) x 32 x 32
+            Noise(use_noise, sigma=noise_sigma),
             nn.Conv2d(ndf, ndf * 2, 4, 2, 1, bias=False),
             nn.BatchNorm2d(ndf * 2),
             nn.LeakyReLU(0.2, inplace=True),
             # state size. (ndf*2) x 16 x 16
+            Noise(use_noise, sigma=noise_sigma),
             nn.Conv2d(ndf * 2, ndf * 4, 4, 2, 1, bias=False),
             nn.BatchNorm2d(ndf * 4),
             nn.LeakyReLU(0.2, inplace=True),
             # state size. (ndf*4) x 8 x 8
+            Noise(use_noise, sigma=noise_sigma),
             nn.Conv2d(ndf * 4, ndf * 8, 4, 2, 1, bias=False),
             nn.BatchNorm2d(ndf * 8),
             nn.LeakyReLU(0.2, inplace=True),

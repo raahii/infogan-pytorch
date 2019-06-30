@@ -61,10 +61,10 @@ class Trainer(object):
     def gen_random_images(self, gen: nn.Module):
         gen.eval()
         with torch.no_grad():
-            zs = gen.sample_latent_vars(25)
+            zs = gen.sample_latent_vars(100)
             x = gen.infer(list(zs.values()))
 
-        x = make_grid(x, 5, normalize=True)  # , scale_each=True)
+        x = make_grid(x, 10, normalize=True)  # , scale_each=True)
         self.logger.tf_log_image(x, self.iteration, "random")
         torchvision.utils.save_image(
             x, self.gen_images_path / f"random_{self.iteration}.jpg"
@@ -74,10 +74,13 @@ class Trainer(object):
         gen.eval()
         with torch.no_grad():
             zs = gen.sample_latent_vars(100)
+
+            # overwrite c1 to intentional values
             idx = np.arange(10).repeat(10)
             one_hot = np.zeros((100, 10))
             one_hot[range(100), idx] = 1
             zs["c1"] = torch.tensor(one_hot, device=self.device, dtype=torch.float)
+
             x = gen.infer(list(zs.values()))
 
         x = make_grid(x, 10, normalize=True)
