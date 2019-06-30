@@ -124,10 +124,12 @@ class Logger(object):
         self.update("elapsed_time", time.time())
 
         log_strings: List[str] = []
-        for _, m in self.metrics.items():
+        for k, m in self.metrics.items():
             if m.mtype == MetricType.Number:
                 s = "{}".format(m.value)
             elif m.mtype == MetricType.Loss:
+                if len(m.value) == 0:
+                    raise Exception(f"Metric {k} has no values.")
                 s = "{:0.3f}".format(sum(m.value) / len(m.value))
             elif m.mtype == MetricType.Time:
                 _value = int(m.value)
@@ -157,6 +159,8 @@ class Logger(object):
             if metric.mtype != MetricType.Loss:
                 continue
 
+            if len(metric.value) == 0:
+                raise Exception(f"Metric {name} has no values.")
             mean: float = sum(metric.value) / len(metric.value)
             self.tf_writer.add_scalar(name, mean, step)
 

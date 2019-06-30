@@ -110,7 +110,7 @@ class Trainer(object):
         self.logger.define("epoch", MetricType.Number)
         self.logger.define("loss_gen", MetricType.Loss)
         self.logger.define("loss_dis", MetricType.Loss)
-        self.logger.define("loss_", MetricType.Loss)
+        self.logger.define("loss_q", MetricType.Loss)
 
         # Start training
         self.logger.info(f"Start training, device: {self.device}")
@@ -157,7 +157,8 @@ class Trainer(object):
 
                 # compute infogan loss
                 c_true = {k: zs[k] for k in c_fake.keys()}
-                loss_gen += info_loss(c_fake, c_true)
+                loss_q = info_loss(c_fake, c_true)
+                loss_gen += loss_q
 
                 loss_gen.backward()
                 opt_gen.step()
@@ -167,6 +168,7 @@ class Trainer(object):
                 self.logger.update("epoch", self.epoch)
                 self.logger.update("loss_gen", loss_gen.cpu().item())
                 self.logger.update("loss_dis", loss_dis.cpu().item())
+                self.logger.update("loss_q", loss_q.cpu().item())
 
                 # log
                 if self.iteration % self.configs["log_interval"] == 0:
