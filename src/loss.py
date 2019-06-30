@@ -11,6 +11,19 @@ from models import LatentVariable
 LABEL_REAL, LABEL_FAKE = 1, 0
 
 
+class AdversarialLoss:
+    def __init__(self):
+        self.loss = nn.BCELoss(reduction="mean")
+        self.device = utils.current_device()
+
+    def __call__(self, y_hat: torch.Tensor, label: int):
+        if label not in [LABEL_REAL, LABEL_FAKE]:
+            raise Exception("Invalid label is passed to adversarial loss")
+
+        y_true = torch.full(y_hat.size(), label, device=self.device)
+        return self.loss(y_hat, y_true)
+
+
 class InfoGANLoss:
     def __init__(self, latent_vars: Dict[str, LatentVariable]):
         self.latent_vars = latent_vars
@@ -37,19 +50,6 @@ class InfoGANLoss:
                 losses.append(self.continuous_loss(c_true, c_hat[0], c_hat[1]))
 
         return functools.reduce(lambda x, y: x + y, losses)
-
-
-class AdversarialLoss:
-    def __init__(self):
-        self.loss = nn.BCELoss()
-        self.device = utils.current_device()
-
-    def __call__(self, y_hat: torch.Tensor, label: int):
-        if label not in [LABEL_REAL, LABEL_FAKE]:
-            raise Exception("Invalid label is passed to adversarial loss")
-
-        y_true = torch.full(y_hat.size(), label, device=self.device)
-        return self.loss(y_hat, y_true)
 
 
 class NormalNLLLoss:

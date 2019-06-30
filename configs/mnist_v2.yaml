@@ -1,8 +1,9 @@
 # add noise to discriminator layers
-experiment_name: "mnist_with_noise"
+# add patch gan loss to discriminator
+experiment_name: "mnist_v2"
 
-log_path: "results/mnist_with_noise"
-tensorboard_path: "results/mnist_with_noise/runs"
+log_path: "results/mnist_v2"
+tensorboard_path: "results/mnist_v2/runs"
 
 dataset:
   path: "data"
@@ -11,7 +12,7 @@ dataset:
   n_workers: 8
 
 training:
-  n_epochs: 500
+  n_epochs: 100
   seed: 0
   log_interval: 100
   snapshot_interval: 1000

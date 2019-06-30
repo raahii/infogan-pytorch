@@ -229,7 +229,7 @@ class DHead(nn.Module):
         ndf = 64
         self.main = nn.Sequential(
             # state size. (ndf*8) x 4 x 4
-            nn.Conv2d(ndf * 8, 1, 4, 1, 0, bias=False),
+            nn.Conv2d(ndf * 8, 1, 2, 1, 0, bias=False),
             nn.Sigmoid(),
             # state size. 1 x 1 x 1
         )
@@ -266,7 +266,7 @@ class QHead(nn.Module):
                 convs = [nn.Conv2d(ndf * 2, var.cdim, 1)]
 
             for i, conv in enumerate(convs):
-                # conv.apply(weights_init)
+                conv.apply(weights_init)
                 setattr(self, f"conv_{name}_{i}", conv)
 
             self.convs[name] = convs
@@ -294,10 +294,10 @@ if __name__ == "__main__":
     x = g.infer(list(zs.values()))
     print(x.shape)
 
-    d = Discriminator(latent_vars)
+    d = Discriminator(latent_vars, configs["models"]["dis"])
     d_head, q_head = DHead(), QHead(latent_vars)
 
     mid = d(x)
     y, c = d_head(mid), q_head(mid)
 
-    print(y.shape, list(map(lambda x: x.size(), c.values())))
+    print(y.shape, list(map(lambda x: [_x.size() for _x in x], c.values())))
