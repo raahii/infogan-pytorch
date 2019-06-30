@@ -22,10 +22,17 @@ class Noise(nn.Module):
         super().__init__()
         self.use_noise = use_noise
         self.sigma = sigma
+        self.device = utils.current_device()
 
     def forward(self, x):
         if self.use_noise:
-            return x + self.sigma * torch.empty(x.size(), requires_grad=False).normal_()
+            return (
+                x
+                + self.sigma
+                * torch.empty(
+                    x.size(), device=self.device, requires_grad=False
+                ).normal_()
+            )
         return x
 
 
@@ -34,18 +41,17 @@ class LatentVariable(object):
         self.name: str = name
         self.kind: str = kind
         self.dim: int = dim
+        self.cdim: int = dim
         self.prob_name: str = prob
 
         # define probability distribution
         if prob == "normal":
             klass: Any = dist.normal.Normal(kwargs["mu"], kwargs["var"])
-            self.cdim: int = dim
         elif prob == "uniform":
             klass = dist.uniform.Uniform(kwargs["min"], kwargs["max"])
-            self.cdim: int = dim
         elif prob == "categorical":
             klass = Categorical(kwargs["k"])
-            self.cdim: int = dim * kwargs["k"]
+            self.cdim = dim * kwargs["k"]
             # k = kwargs["k"]
             # p = torch.full((k,), 1.0 / k)
             # klass = dist.categorical.Categorical(p)
@@ -167,7 +173,6 @@ class Generator(nn.Module):
     def infer(self, zs: List[torch.Tensor]) -> torch.Tensor:
         z = torch.cat(zs, dim=1)
         z = z.unsqueeze(-1).unsqueeze(-1)  # expand to image map
-        # z = z.to(self.device)
 
         x = self.forward(z)
         return x

@@ -6,4 +6,6 @@ data/*
 results/*
 notebooks/*
 !.gitkeep
+
 deploy.sh
+fetch.sh

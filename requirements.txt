@@ -1,9 +1,11 @@
-isort
-black
-mypy
+isort==4.3.20
+black==19.3b0
+mypy==0.711
 
-colorlog
+PyYAML==5.1.1
+colorlog==4.0.2
 
-pytorchviz==0.0.1
 torch==1.1.0
 torchvision==0.3.0
+tensorboard==1.14.0
+tensorboardX==1.7
