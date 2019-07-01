@@ -80,7 +80,7 @@ class Logger(object):
         self.define("iteration", MetricType.Number, 4)
         self.define("elapsed_time", MetricType.Time, -1)
 
-    def define(self, name: str, mtype: MetricType, priority=0) -> None:
+    def define(self, name: str, mtype: MetricType, priority=0):
         metric: Metric = Metric(mtype, priority)
         if mtype == MetricType.Number:
             metric.value = 0
@@ -98,12 +98,12 @@ class Logger(object):
     def metric_keys(self) -> List[str]:
         return list(self.metrics.keys())
 
-    def clear(self) -> None:
+    def clear(self):
         for _, metric in self.metrics.items():
             if metric.mtype != MetricType.Loss:
                 metric.value = []
 
-    def update(self, name: str, value: Any) -> None:
+    def update(self, name: str, value: Any):
         m = self.metrics[name]
         if m.mtype == MetricType.Number:
             m.value = value
@@ -112,13 +112,13 @@ class Logger(object):
         elif m.mtype == MetricType.Time:
             m.value = value - m.params["start_time"]
 
-    def print_header(self) -> None:
+    def print_header(self):
         log_string = ""
         for name in self.metrics.keys():
             log_string += "{:>13} ".format(name)
         self._logger.info(log_string)
 
-    def log(self) -> None:
+    def log(self):
         # display and save logs
         self.update("elapsed_time", time.time())
 
@@ -144,7 +144,7 @@ class Logger(object):
 
         self._logger.info(log_string)
 
-    def log_tensorboard(self, x_axis_metric: str) -> None:
+    def log_tensorboard(self, x_axis_metric: str):
         # log MetricType.Loss metrics only
         if x_axis_metric not in self.metric_keys():
             raise Exception(f"No such metric: {x_axis_metric}")
@@ -170,10 +170,10 @@ class Logger(object):
     def tf_log_image(self, x: torch.Tensor, step: int, tag: str):
         self.tf_writer.add_image(tag, x, step)
 
-    def info(self, msg: str) -> None:
+    def info(self, msg: str):
         self._logger.info(msg)
 
-    def debug(self, msg: str) -> None:
+    def debug(self, msg: str):
         self._logger.debug(msg)
 
 

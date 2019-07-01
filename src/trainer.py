@@ -181,7 +181,7 @@ class Trainer(object):
                 if self.iteration % self.configs["log_interval"] == 0:
                     self.logger.log()
                     self.logger.log_tensorboard("iteration")
-                    # self.logger.clear()
+                    self.logger.clear()
 
                 # snapshot models
                 if self.iteration % self.configs["snapshot_interval"] == 0:

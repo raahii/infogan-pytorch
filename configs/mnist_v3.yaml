@@ -1,12 +1,13 @@
-experiment_name: "mnist_v1"
+# add c variable
+experiment_name: "mnist_v3"
 
-log_path: "results/mnist_v1"
-tensorboard_path: "results/mnist_v1/runs"
+log_path: "results/mnist_v3"
+tensorboard_path: "results/mnist_v3/runs"
 
 dataset:
   path: "data"
   name: "mnist"
-  batchsize: 200
+  batchsize: 1000
   n_workers: 8
 
 training:
@@ -27,7 +28,7 @@ optimizer:
 models:
   dis:
     use_noise: false
-    noise_sigma: 0.2
+    noise_sigma: 0.01
 
 latent_variables:
   - 
@@ -45,13 +46,13 @@ latent_variables:
     dim: 1
     k: 10
 
-  # - 
-  #   name: "c2"
-  #   kind: "c"
-  #   prob: "uniform"
-  #   dim: 1
-  #   min: -1
-  #   max: 1
+  - 
+    name: "c2"
+    kind: "c"
+    prob: "uniform"
+    dim: 1
+    min: -1
+    max: 1
 
   # - 
   #  name: "c3"

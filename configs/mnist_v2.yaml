@@ -1,3 +1,4 @@
+# increase batch size
 # add noise to discriminator layers
 # add patch gan loss to discriminator
 experiment_name: "mnist_v2"
@@ -29,7 +30,7 @@ optimizer:
 models:
   dis:
     use_noise: true
-    noise_simga: 0.2
+    noise_sigma: 0.01
 
 latent_variables:
   - 
