@@ -14,8 +14,8 @@ training:
   n_epochs: 100
   seed: 0
   log_interval: 100
-  snapshot_interval: 1000
-  log_samples_interval: 1000
+  snapshot_interval: 500
+  log_samples_interval: 500
 
 optimizer:
   gen:
@@ -45,6 +45,7 @@ latent_variables:
     prob: "categorical"
     dim: 1
     k: 10
+    weight: 1
 
   - 
     name: "c2"
@@ -53,6 +54,7 @@ latent_variables:
     dim: 1
     min: -1
     max: 1
+    weight: 0.1
 
   # - 
   #  name: "c3"

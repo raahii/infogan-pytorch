@@ -33,41 +33,35 @@ class InfoGANLoss:
         self.device = utils.current_device()
 
     def __call__(
-        self, cs_hat: Dict[str, List[torch.Tensor]], cs_true: Dict[str, torch.Tensor]
+        self, cs_hat: Dict[str, torch.Tensor], cs_true: Dict[str, torch.Tensor]
     ) -> torch.Tensor:
         if cs_hat.keys() != cs_true.keys():
             raise Exception("The keys of cs_hat is different from cs_true")
 
         losses: List[torch.Tensor] = []
         for key in cs_hat.keys():
-            c_hat: List[torch.Tensor] = cs_hat[key]
-            c_true: torch.Tensor = cs_true[key]
+            c_hat, c_true = cs_hat[key], cs_true[key]
 
             if self.latent_vars[key].prob_name == "categorical":
                 _, targets = c_true.max(dim=1)
-                losses.append(self.discrete_loss(c_hat[0], targets))
+                loss = self.discrete_loss(c_hat, targets)
             elif self.latent_vars[key].prob_name == "uniform":
-                losses.append(self.continuous_loss(c_true, c_hat[0], c_hat[1]))
+                ln_var = torch.ones(c_hat.size(), device=self.device)
+                loss = self.continuous_loss(c_true.squeeze(), c_hat, ln_var)
+
+            loss *= self.latent_vars[key].params["weight"]
+            losses.append(loss)
 
         return functools.reduce(lambda x, y: x + y, losses)
 
 
 class NormalNLLLoss:
-    """
-    Calculate the negative log likelihood
-    of normal distribution.
-    This needs to be minimised.
-    Treating Q(cj | x) as a factored Gaussian.
-    """
-
     def __call__(
-        self, x: torch.Tensor, mu: torch.Tensor, var: torch.Tensor
+        self, x: torch.Tensor, mean: torch.Tensor, ln_var: torch.Tensor
     ) -> torch.Tensor:
 
         eps = 1e-6
-        nll = -0.5 * torch.log(torch.mul(var, 2 * math.pi) + eps)
-        nll = nll - torch.pow(x - mu, 2)
-        nll = torch.div(nll, (torch.mul(var, 2.0) + eps))
-        nll = -torch.mean(torch.sum(nll, 1))
+        nll = -0.5 * torch.pow(x - mean, 2) * torch.exp(-ln_var)
+        nll = (ln_var + math.log(2 * math.pi + eps)) / 2 - nll
 
-        return nll
+        return torch.mean(nll)

@@ -44,6 +44,7 @@ latent_variables:
     prob: "categorical"
     dim: 1
     k: 10
+    weight: 1
 
   # - 
   #   name: "c2"
