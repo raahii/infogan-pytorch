@@ -12,8 +12,7 @@ from torch.utils.data import DataLoader
 import loss
 from dataset import new_mnist_dataset
 from logger import Logger
-from models import (DHead, Discriminator, Generator, QHead,
-                    build_latent_variables)
+from models import DHead, Discriminator, Generator, QHead, build_latent_variables
 from trainer import Trainer
 
 
@@ -90,7 +89,9 @@ def main():
     losses = {"adv": loss.AdversarialLoss(), "info": loss.InfoGANLoss(latent_vars)}
 
     # start training
-    trainer = Trainer(dataloader, models, opts, losses, configs["training"], logger)
+    trainer = Trainer(
+        dataloader, latent_vars, models, opts, losses, configs["training"], logger
+    )
     trainer.train()
 
 

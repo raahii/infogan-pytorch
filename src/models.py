@@ -177,6 +177,10 @@ class Generator(nn.Module):
         x = self.forward(z)
         return x
 
+    @property
+    def module(self) -> nn.Module:
+        return self
+
 
 class Discriminator(nn.Module):
     def __init__(self, configs: Dict[str, Any]):
@@ -259,7 +263,13 @@ class QHead(nn.Module):
         for name, var in latent_vars.items():
             if var.kind == "z":
                 continue
-            self.convs[name] = nn.Conv2d(ndf * 2, var.cdim, 1)
+
+            if var.prob_name == "uniform":
+                self.convs[name] = nn.Sequential(
+                    nn.Conv2d(ndf * 2, var.cdim, 1), nn.Tanh()
+                )
+            else:
+                self.convs[name] = nn.Conv2d(ndf * 2, var.cdim, 1)
 
         self.apply(weights_init)
 

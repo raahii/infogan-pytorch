@@ -7,11 +7,11 @@ tensorboard_path: "results/mnist_v3/runs"
 dataset:
   path: "data"
   name: "mnist"
-  batchsize: 1000
+  batchsize: 600
   n_workers: 8
 
 training:
-  n_epochs: 100
+  n_epochs: 300
   seed: 0
   log_interval: 100
   snapshot_interval: 500
@@ -54,7 +54,7 @@ latent_variables:
     dim: 1
     min: -1
     max: 1
-    weight: 0.1
+    weight: 1
 
   # - 
   #  name: "c3"
