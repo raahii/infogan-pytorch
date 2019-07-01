@@ -68,10 +68,7 @@ def main():
 
     # prepare models
     latent_vars = build_latent_variables(configs["latent_variables"])
-    gen, dis = (
-        Generator(latent_vars),
-        Discriminator(latent_vars, configs["models"]["dis"]),
-    )
+    gen, dis = Generator(latent_vars), Discriminator(configs["models"]["dis"])
     dhead, qhead = DHead(), QHead(latent_vars)
     models = {"gen": gen, "dis": dis, "dhead": dhead, "qhead": qhead}
 

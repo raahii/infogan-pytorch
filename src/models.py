@@ -179,18 +179,16 @@ class Generator(nn.Module):
 
 
 class Discriminator(nn.Module):
-    def __init__(self, latent_vars: Dict[str, LatentVariable], configs: Dict[str, Any]):
+    def __init__(self, configs: Dict[str, Any]):
         super().__init__()
 
-        self.latent_vars = latent_vars
         self.configs = configs
-        self.dim_output = sum(map(lambda x: x.cdim, latent_vars.values()))
 
         ndf = 64
         self.device = utils.current_device()
 
         use_noise: bool = configs["use_noise"]
-        noise_sigma: float = configs["use_noise"]
+        noise_sigma: float = configs["noise_sigma"]
 
         self.main = nn.Sequential(
             # input is (nc) x 64 x 64
@@ -234,7 +232,7 @@ class DHead(nn.Module):
         ndf = 64
         self.main = nn.Sequential(
             # state size. (ndf*8) x 4 x 4
-            nn.Conv2d(ndf * 8, 1, 2, 1, 0, bias=False),
+            nn.Conv2d(ndf * 8, 1, 3, 1, 1, bias=False),
             nn.Sigmoid(),
             # state size. 1 x 1 x 1
         )
@@ -251,39 +249,28 @@ class QHead(nn.Module):
         ndf = 64
         self.main = nn.Sequential(
             # state size. (ndf*8) x 4 x 4
-            nn.Conv2d(ndf * 8, ndf * 2, 4, 1, 0, bias=False)
+            nn.Conv2d(ndf * 8, ndf * 2, 4, 1, 0, bias=False),
+            nn.LeakyReLU(0.1, inplace=True),
             # state size. 128 x 2 x 2
         )
 
-        self.convs: Dict[str, List[nn.Conv2d]] = {}
+        # generate each head module from latent variable
+        self.convs: nn.ModuleDict = nn.ModuleDict()
         for name, var in latent_vars.items():
             if var.kind == "z":
                 continue
+            self.convs[name] = nn.Conv2d(ndf * 2, var.cdim, 1)
 
-            if var.prob_name == "uniform":
-                # normal distribution: estimate mu and var
-                convs = [
-                    nn.Conv2d(ndf * 2, var.cdim, 1),
-                    nn.Conv2d(ndf * 2, var.cdim, 1),
-                ]
-            else:
-                # categorical: estimate a scaler class value
-                convs = [nn.Conv2d(ndf * 2, var.cdim, 1)]
-
-            for i, conv in enumerate(convs):
-                conv.apply(weights_init)
-                setattr(self, f"conv_{name}_{i}", conv)
-
-            self.convs[name] = convs
+        self.apply(weights_init)
 
     def forward(self, x):
         mid = self.main(x)
 
-        y: Dict[str, torch.Tensor] = {}
-        for name, convs in self.convs.items():
-            y[name] = [conv(mid).squeeze() for conv in convs]
+        ys: Dict[str, torch.Tensor] = {}
+        for name, conv in self.convs.items():
+            ys[name] = conv(mid).squeeze()
 
-        return y
+        return ys
 
 
 if __name__ == "__main__":
@@ -299,10 +286,10 @@ if __name__ == "__main__":
     x = g.infer(list(zs.values()))
     print(x.shape)
 
-    d = Discriminator(latent_vars, configs["models"]["dis"])
+    d = Discriminator(configs["models"]["dis"])
     d_head, q_head = DHead(), QHead(latent_vars)
 
     mid = d(x)
     y, c = d_head(mid), q_head(mid)
 
-    print(y.shape, list(map(lambda x: [_x.size() for _x in x], c.values())))
+    print(mid.shape, y.shape, list(map(lambda x: [_x.size() for _x in x], c.values())))
