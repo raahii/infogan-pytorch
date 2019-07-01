@@ -49,7 +49,7 @@ class Trainer(object):
         torch.manual_seed(seed)
         torch.cuda.manual_seed_all(seed)
         torch.backends.cudnn.deterministic = True
-        torch.backends.cudnn.benchmark = False
+        torch.backends.cudnn.benchmark = True
 
     def snapshot_models(self):
         for name, model in self.models.items():
@@ -61,8 +61,8 @@ class Trainer(object):
     def gen_random_images(self, gen: nn.Module):
         gen.eval()
         with torch.no_grad():
-            zs = gen.sample_latent_vars(100)
-            x = gen.infer(list(zs.values()))
+            zs = gen.module.sample_latent_vars(100)
+            x = gen.module.infer(list(zs.values()))
 
         x = make_grid(x, 10, normalize=True)  # , scale_each=True)
         self.logger.tf_log_image(x, self.iteration, "random")
@@ -93,6 +93,14 @@ class Trainer(object):
         # retrieve models and move them if necessary
         gen, dis = self.models["gen"], self.models["dis"]
         dhead, qhead = self.models["dhead"], self.models["qhead"]
+
+        n_gpus = torch.cuda.device_count()
+        if n_gpus >= 1:
+            gen = nn.DataParallel(gen)
+            dis = nn.DataParallel(dis)
+            dhead = nn.DataParallel(dhead)
+            qhead = nn.DataParallel(qhead)
+
         gen, dis = gen.to(self.device), dis.to(self.device)
         dhead, qhead = dhead.to(self.device), qhead.to(self.device)
 
@@ -112,7 +120,7 @@ class Trainer(object):
         self.logger.define("loss_q", MetricType.Loss)
 
         # start training
-        self.logger.info(f"Start training, device: {self.device}")
+        self.logger.info(f"Start training, device: {self.device} n_gpus: {n_gpus}")
         self.logger.print_header()
         for i in range(self.configs["n_epochs"]):
             self.epoch += 1
@@ -135,8 +143,8 @@ class Trainer(object):
                 loss_dis_real.backward()
 
                 # train with fake
-                zs = gen.sample_latent_vars(batchsize)
-                x_fake = gen.infer(list(zs.values()))
+                zs = gen.module.sample_latent_vars(batchsize)
+                x_fake = gen.module.infer(list(zs.values()))
                 y_fake = dhead(dis(x_fake.detach()))
                 loss_dis_fake = adv_loss(y_fake, loss.LABEL_FAKE)
 
@@ -154,7 +162,7 @@ class Trainer(object):
                 # compute loss as fake samples are real
                 loss_gen = adv_loss(y_fake, loss.LABEL_REAL)
 
-                # compute infogan loss
+                # compute mutual information loss
                 c_true = {k: zs[k] for k in c_fake.keys()}
                 loss_q = info_loss(c_fake, c_true)
                 loss_gen += loss_q
@@ -162,7 +170,7 @@ class Trainer(object):
                 loss_gen.backward()
                 opt_gen.step()
 
-                # update metric
+                # update metrics
                 self.logger.update("iteration", self.iteration)
                 self.logger.update("epoch", self.epoch)
                 self.logger.update("loss_gen", loss_gen.cpu().item())
