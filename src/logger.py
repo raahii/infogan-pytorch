@@ -1,3 +1,4 @@
+import datetime
 import enum
 import logging
 import time
@@ -132,9 +133,7 @@ class Logger(object):
                 s = "{:0.3f}".format(sum(m.value) / len(m.value))
             elif m.mtype == MetricType.Time:
                 _value = int(m.value)
-                s = "{:02d}:{:02d}:{:02d}".format(
-                    _value // 3600, _value // 60, _value % 60
-                )
+                s = str(datetime.timedelta(seconds=_value))
 
             log_strings.append(s)
 

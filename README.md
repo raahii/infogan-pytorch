@@ -15,7 +15,7 @@ I decided to make this repository public by following reasons.
 
 ## Prerequisities
 
-- Python >= 3.6
+- Python (`~3.6`)
 
 ## Getting Started
 
