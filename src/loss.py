@@ -5,8 +5,8 @@ from typing import Dict, List
 import torch
 import torch.nn as nn
 
-import utils
-from models import LatentVariable
+import util
+from variable import LatentVariable
 
 LABEL_REAL, LABEL_FAKE = 1, 0
 
@@ -14,7 +14,7 @@ LABEL_REAL, LABEL_FAKE = 1, 0
 class AdversarialLoss:
     def __init__(self):
         self.loss = nn.BCELoss(reduction="mean")
-        self.device = utils.current_device()
+        self.device = util.current_device()
 
     def __call__(self, y_hat: torch.Tensor, label: int):
         if label not in [LABEL_REAL, LABEL_FAKE]:
@@ -30,7 +30,7 @@ class InfoGANLoss:
 
         self.discrete_loss = nn.CrossEntropyLoss()
         self.continuous_loss = NormalNLLLoss()
-        self.device = utils.current_device()
+        self.device = util.current_device()
 
     def __call__(
         self, cs_hat: Dict[str, torch.Tensor], cs_true: Dict[str, torch.Tensor]

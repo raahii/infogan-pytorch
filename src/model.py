@@ -1,11 +1,11 @@
 from collections import OrderedDict
-from typing import Any, Dict, List, Sequence, Tuple
+from typing import Any, Dict, List, Tuple
 
 import torch
-import torch.distributions as dist
 import torch.nn as nn
 
-import utils
+import util
+from variable import LatentVariable, build_latent_variables
 
 
 def weights_init(m):
@@ -22,7 +22,7 @@ class Noise(nn.Module):
         super().__init__()
         self.use_noise = use_noise
         self.sigma = sigma
-        self.device = utils.current_device()
+        self.device = util.current_device()
 
     def forward(self, x):
         if self.use_noise:
@@ -36,89 +36,6 @@ class Noise(nn.Module):
         return x
 
 
-class LatentVariable(object):
-    def __init__(self, name: str, kind: str, prob: str, dim: int, **kwargs: Any):
-        self.name: str = name
-        self.kind: str = kind
-        self.dim: int = dim
-        self.cdim: int = dim
-        self.prob_name: str = prob
-
-        # define probability distribution
-        if prob == "normal":
-            klass: Any = dist.normal.Normal(kwargs["mu"], kwargs["var"])
-        elif prob == "uniform":
-            klass = dist.uniform.Uniform(kwargs["min"], kwargs["max"])
-        elif prob == "categorical":
-            klass = Categorical(kwargs["k"])
-            self.cdim = dim * kwargs["k"]
-            # k = kwargs["k"]
-            # p = torch.full((k,), 1.0 / k)
-            # klass = dist.categorical.Categorical(p)
-
-        self.prob: dist.Distribution = klass
-        self.params = kwargs
-
-    def __str__(self):
-        return f"<LatentVariable(name: {self.name}, kind: {self.kind}, prob: {self.prob_name}, dim: {self.dim})>"
-
-    def __repr__(self):
-        return str(self)
-
-
-def build_latent_variables(lv_configs: Dict) -> Dict[str, LatentVariable]:
-    lvars: OrderedDict[str, LatentVariable] = OrderedDict()
-
-    # first of all, add z variable
-    count = 0
-    for c in lv_configs:
-        if c["kind"] == "z":
-            if count > 1:
-                raise Exception("More than two latent variables of kind 'z' exist!")
-            lvars[c["name"]] = LatentVariable(**c)
-            count += 1
-
-    if count == 0:
-        raise Exception("Latent variable of kind 'z' doesn't exist!")
-
-    # after that, add other variables
-    for c in lv_configs:
-        if c["kind"] == "z":
-            continue
-
-        if c["name"] in lvars:
-            raise Exception("Latent variable name is not unique.")
-
-        lvars[c["name"]] = LatentVariable(**c)
-
-    return lvars
-
-
-class Categorical:
-    def __init__(self, k: int):
-        from torch.distributions.categorical import Categorical as _Categorical
-
-        self.k = k
-
-        p = torch.empty(k).fill_(1 / k)
-        self.prob = _Categorical(p)
-
-    def one_hot(self, x: torch.Tensor) -> torch.Tensor:
-        b, c = tuple(x.shape)
-        _x = torch.unsqueeze(x, 2)
-        oh = torch.empty(b, c, self.k).zero_()
-        oh.scatter_(2, _x, 1)
-        oh = oh.view(b, c * self.k)
-
-        return oh
-
-    def sample(self, shape: Sequence[int]) -> torch.Tensor:
-        x = self.prob.sample(shape)
-        x = self.one_hot(x)
-
-        return x
-
-
 class Generator(nn.Module):
     def __init__(self, latent_vars: Dict[str, LatentVariable]):
         super().__init__()
@@ -126,7 +43,7 @@ class Generator(nn.Module):
         self.latent_vars = latent_vars
         self.dim_input = sum(map(lambda x: x.cdim, latent_vars.values()))
         ngf = 64
-        self.device = utils.current_device()
+        self.device = util.current_device()
 
         # main layers
         self.main = nn.Sequential(
@@ -189,7 +106,7 @@ class Discriminator(nn.Module):
         self.configs = configs
 
         ndf = 64
-        self.device = utils.current_device()
+        self.device = util.current_device()
 
         use_noise: bool = configs["use_noise"]
         noise_sigma: float = configs["noise_sigma"]
@@ -238,7 +155,7 @@ class DHead(nn.Module):
             # state size. (ndf*8) x 4 x 4
             nn.Conv2d(ndf * 8, 1, 3, 1, 1, bias=False),
             nn.Sigmoid(),
-            # state size. 1 x 1 x 1
+            # state size. 1 x 4 x 4
         )
         self.apply(weights_init)
 
@@ -259,15 +176,13 @@ class QHead(nn.Module):
         )
 
         # generate each head module from latent variable
-        self.convs: nn.ModuleDict = nn.ModuleDict()
+        self.convs = nn.ModuleDict()
         for name, var in latent_vars.items():
             if var.kind == "z":
                 continue
 
-            if var.prob_name == "uniform":
-                self.convs[name] = nn.Sequential(
-                    nn.Conv2d(ndf * 2, var.cdim, 1), nn.Tanh()
-                )
+            if var.prob_name == "normal":
+                self.convs[name] = nn.Conv2d(ndf * 2, var.cdim * 2, 1)
             else:
                 self.convs[name] = nn.Conv2d(ndf * 2, var.cdim, 1)
 
@@ -294,7 +209,7 @@ if __name__ == "__main__":
     for k, v in zs.items():
         print(k, v.shape)
     x = g.infer(list(zs.values()))
-    print(x.shape)
+    print("x:", x.shape)
 
     d = Discriminator(configs["models"]["dis"])
     d_head, q_head = DHead(), QHead(latent_vars)
@@ -302,4 +217,6 @@ if __name__ == "__main__":
     mid = d(x)
     y, c = d_head(mid), q_head(mid)
 
-    print(mid.shape, y.shape, list(map(lambda x: [_x.size() for _x in x], c.values())))
+    print("mid:", mid.shape)
+    print("y:", y.shape)
+    print("c:", {k: v.size() for k, v in c.items()})

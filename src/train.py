@@ -12,8 +12,9 @@ from torch.utils.data import DataLoader
 import loss
 from dataset import new_mnist_dataset
 from logger import Logger
-from models import DHead, Discriminator, Generator, QHead, build_latent_variables
+from model import DHead, Discriminator, Generator, QHead
 from trainer import Trainer
+from variable import build_latent_variables
 
 
 def load_yaml(path: str) -> Dict[str, Any]:

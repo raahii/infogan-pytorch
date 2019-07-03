@@ -10,9 +10,9 @@ from torch.utils.data import DataLoader
 from torchvision.utils import make_grid, save_image
 
 import loss
-import utils
+import util
 from logger import Logger, MetricType
-from models import LatentVariable
+from variable import LatentVariable
 
 
 class Trainer(object):
@@ -35,7 +35,7 @@ class Trainer(object):
         self.configs = configs
         self.logger = logger
 
-        self.device = utils.current_device()
+        self.device = util.current_device()
 
         self.gen_images_path = self.logger.path / "images"
         self.model_snapshots_path = self.logger.path / "models"
@@ -69,7 +69,7 @@ class Trainer(object):
 
         x = make_grid(x, 10, normalize=True)  # , scale_each=True)
         self.logger.tf_log_image(x, self.iteration, "random")
-        torchvision.utils.save_image(
+        torchvision.util.save_image(
             x, self.gen_images_path / f"random_{self.iteration}.jpg"
         )
 
@@ -94,7 +94,7 @@ class Trainer(object):
 
         x = make_grid(x, k, normalize=True)
         self.logger.tf_log_image(x, self.iteration, var_name)
-        torchvision.utils.save_image(x, self.gen_images_path / f"{var_name}.jpg")
+        torchvision.util.save_image(x, self.gen_images_path / f"{var_name}.jpg")
 
     def gen_images_continuous(
         self, gen: nn.Module, var_name_dis: str, var_name_con: str
@@ -138,7 +138,7 @@ class Trainer(object):
 
         x = make_grid(x, k, normalize=True)
         self.logger.tf_log_image(x, self.iteration, f"{var_name_dis}_{var_name_con}")
-        torchvision.utils.save_image(
+        torchvision.util.save_image(
             x, self.gen_images_path / f"{var_name_dis}_{var_name_con}.jpg"
         )
 
