@@ -2,13 +2,14 @@
 
 This is a pytorch implementation of [InfoGAN](https://papers.nips.cc/paper/6399-infogan-interpretable-representation-learning-by-information-maximizing-generative-adversarial-nets).
 
-I decided to make this repository public by following reasons.
+This repository has the following features that others do not have:
 
-- This includes cleaner codes and architecture than others.
-  - This is totally my personal point of view. :wink:
-
-- The codes are highly customizable, so you can use more generically.
+- Highly customizable.
+  - You can use this for your own dataset, settings.
   - Most parameters including the latent variable design can be customized by editing the yaml config file.
+
+- OK clean, structured codes
+  - This is totally my personal point of view. :wink:
 
 - Tensorborad is available by default.
 

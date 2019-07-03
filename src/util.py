@@ -1,6 +1,15 @@
-import numpy as np
+from typing import Any, Dict
+
 import torch
-from PIL import Image
+import yaml
+
+
+def load_yaml(path: str) -> Dict[str, Any]:
+    f = open(path)
+    c = yaml.load(f, Loader=yaml.FullLoader)
+    f.close()
+
+    return c
 
 
 def current_device() -> torch.device:

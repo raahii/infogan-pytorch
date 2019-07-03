@@ -201,7 +201,7 @@ class QHead(nn.Module):
 if __name__ == "__main__":
     from train import load_yaml
 
-    configs = load_yaml("configs/debug.yaml")
+    configs = util.load_yaml("configs/debug.yaml")
     latent_vars = build_latent_variables(configs["latent_variables"])
 
     g = Generator(latent_vars)

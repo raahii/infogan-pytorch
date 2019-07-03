@@ -1,28 +1,20 @@
 import argparse
 import random
 from pathlib import Path
-from typing import Any, Dict, List
+from typing import Dict, List
 
 import torch
 import torch.nn as nn
 import torch.optim as optim
-import yaml
 from torch.utils.data import DataLoader
 
 import loss
+import util
 from dataset import new_mnist_dataset
 from logger import Logger
 from model import DHead, Discriminator, Generator, QHead
 from trainer import Trainer
 from variable import build_latent_variables
-
-
-def load_yaml(path: str) -> Dict[str, Any]:
-    f = open(path)
-    c = yaml.load(f, Loader=yaml.FullLoader)
-    f.close()
-
-    return c
 
 
 def worker_init_fn(worker_id: int):
@@ -45,7 +37,7 @@ def main():
         help="training configuration file",
     )
     args = parser.parse_args()
-    configs = load_yaml(args.config)
+    configs = util.load_yaml(args.config)
 
     dataset_name = configs["dataset"]["name"]
     dataset_path = Path(configs["dataset"]["path"]) / dataset_name
