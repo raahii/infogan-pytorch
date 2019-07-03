@@ -69,7 +69,7 @@ class Trainer(object):
 
         x = make_grid(x, 10, normalize=True)  # , scale_each=True)
         self.logger.tf_log_image(x, self.iteration, "random")
-        torchvision.util.save_image(
+        torchvision.utils.save_image(
             x, self.gen_images_path / f"random_{self.iteration}.jpg"
         )
 
@@ -94,7 +94,7 @@ class Trainer(object):
 
         x = make_grid(x, k, normalize=True)
         self.logger.tf_log_image(x, self.iteration, var_name)
-        torchvision.util.save_image(x, self.gen_images_path / f"{var_name}.jpg")
+        torchvision.utils.save_image(x, self.gen_images_path / f"{var_name}.jpg")
 
     def gen_images_continuous(
         self, gen: nn.Module, var_name_dis: str, var_name_con: str
@@ -104,8 +104,10 @@ class Trainer(object):
         """
 
         k: int = self.latent_vars[var_name_dis].params["k"]
-        _min: int = self.latent_vars[var_name_con].params["min"]
-        _max: int = self.latent_vars[var_name_con].params["max"]
+        # _min: int = self.latent_vars[var_name_con].params["min"]
+        # _max: int = self.latent_vars[var_name_con].params["max"]
+        _min: int = -1
+        _max: int = 1
 
         gen.eval()
         with torch.no_grad():
@@ -123,9 +125,9 @@ class Trainer(object):
                     )
                 elif var_name == var_name_con:
                     # overwrite continuous variable to intentional values
-                    interp = np.linspace(_min * 2, _max * 2, k)
-                    interp = np.repeat(interp, k)  # equal along col direction
+                    interp = np.linspace(_min, _max, k)
                     interp = np.expand_dims(interp, 1)
+                    interp = np.tile(interp, (k, 1))  # equal along col direction
                     zs[var_name_con] = torch.tensor(
                         interp, device=self.device, dtype=torch.float
                     )
@@ -133,12 +135,11 @@ class Trainer(object):
                     zs[var_name] = (
                         zs[var_name].view(k, 1, -1).repeat(1, k, 1).view(k * k, -1)
                     )
-
             x = gen.module.infer(list(zs.values()))
 
         x = make_grid(x, k, normalize=True)
         self.logger.tf_log_image(x, self.iteration, f"{var_name_dis}_{var_name_con}")
-        torchvision.util.save_image(
+        torchvision.utils.save_image(
             x, self.gen_images_path / f"{var_name_dis}_{var_name_con}.jpg"
         )
 
@@ -171,6 +172,11 @@ class Trainer(object):
         self.logger.define("loss_gen", MetricType.Loss)
         self.logger.define("loss_dis", MetricType.Loss)
         self.logger.define("loss_q", MetricType.Loss)
+
+        for k, v in self.latent_vars.items():
+            if v.kind == "z":
+                continue
+            self.logger.define(f"loss_{k}", MetricType.Loss)
 
         # start training
         self.logger.info(f"Start training, device: {self.device} n_gpus: {n_gpus}")
@@ -217,7 +223,7 @@ class Trainer(object):
 
                 # compute mutual information loss
                 c_true = {k: zs[k] for k in c_fake.keys()}
-                loss_q = info_loss(c_fake, c_true)
+                loss_q, loss_q_details = info_loss(c_fake, c_true)
                 loss_gen += loss_q
 
                 loss_gen.backward()
@@ -229,6 +235,9 @@ class Trainer(object):
                 self.logger.update("loss_gen", loss_gen.cpu().item())
                 self.logger.update("loss_dis", loss_dis.cpu().item())
                 self.logger.update("loss_q", loss_q.cpu().item())
+
+                for k, v in loss_q_details.items():
+                    self.logger.update(f"loss_{k}", v.cpu().item())
 
                 # log metrics
                 if self.iteration % self.configs["log_interval"] == 0:
