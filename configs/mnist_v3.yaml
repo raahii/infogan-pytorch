@@ -54,4 +54,4 @@ latent_variables:
     dim: 1
     mu: 0
     var: 1
-    weight: 1.0
+    weight: 0.1

@@ -7,5 +7,10 @@ results/*
 notebooks/*
 !.gitkeep
 
+configs/*
+!configs/debug.yaml
+!configs/mnist_v1.yaml
+!configs/mnist_v2.yaml
+
 deploy.sh
 fetch.sh
