@@ -16,6 +16,7 @@ training:
   log_interval: 100
   snapshot_interval: 500
   log_samples_interval: 500
+  grad_max_norm: 8
 
 optimizer:
   gen:
