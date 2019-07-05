@@ -94,7 +94,9 @@ class Trainer(object):
 
         x = make_grid(x, k, normalize=True)
         self.logger.tf_log_image(x, self.iteration, var_name)
-        torchvision.utils.save_image(x, self.gen_images_path / f"{var_name}.jpg")
+        torchvision.utils.save_image(
+            x, self.gen_images_path / f"{var_name}_{self.iteration}.jpg"
+        )
 
     def gen_images_continuous(
         self, gen: nn.Module, var_name_dis: str, var_name_con: str
@@ -106,8 +108,8 @@ class Trainer(object):
         k: int = self.latent_vars[var_name_dis].params["k"]
         # _min: int = self.latent_vars[var_name_con].params["min"]
         # _max: int = self.latent_vars[var_name_con].params["max"]
-        _min: int = -1
-        _max: int = 1
+        _min: int = -2
+        _max: int = 2
 
         gen.eval()
         with torch.no_grad():
@@ -140,7 +142,9 @@ class Trainer(object):
         x = make_grid(x, k, normalize=True)
         self.logger.tf_log_image(x, self.iteration, f"{var_name_dis}_{var_name_con}")
         torchvision.utils.save_image(
-            x, self.gen_images_path / f"{var_name_dis}_{var_name_con}.jpg"
+            x,
+            self.gen_images_path
+            / f"{var_name_dis}_{var_name_con}_{self.iteration}.jpg",
         )
 
     def train(self):
@@ -254,3 +258,9 @@ class Trainer(object):
                     self.gen_random_images(gen)
                     self.gen_images_discrete(gen, "c1")
                     self.gen_images_continuous(gen, "c1", "c2")
+                    self.gen_images_continuous(gen, "c1", "c3")
+                    # for name, var in self.latent_vars.items():
+                    #     if var.prob_name == "categorical":
+                    #         self.gen_images_discrete(gen, name)
+                    #     else:
+                    #         self.gen_images_continuous(gen, "c1", name)
