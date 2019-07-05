@@ -6,6 +6,7 @@ import numpy as np
 import torch
 import torchvision
 from torch import nn
+from torch.nn.utils import clip_grad_norm_ as clip_grad_norm
 from torch.utils.data import DataLoader
 from torchvision.utils import make_grid, save_image
 
@@ -36,6 +37,8 @@ class Trainer(object):
         self.logger = logger
 
         self.device = util.current_device()
+
+        self.grad_max_norm = configs["grad_max_norm"]
 
         self.gen_images_path = self.logger.path / "images"
         self.model_snapshots_path = self.logger.path / "models"
@@ -212,6 +215,7 @@ class Trainer(object):
                 loss_dis_fake = adv_loss(y_fake, loss.LABEL_FAKE)
 
                 loss_dis_fake.backward()
+                clip_grad_norm(gen.parameters(), self.grad_max_norm)
                 opt_dis.step()
 
                 loss_dis = loss_dis_real + loss_dis_fake
@@ -231,6 +235,7 @@ class Trainer(object):
                 loss_gen += loss_q
 
                 loss_gen.backward()
+                clip_grad_norm(gen.parameters(), self.grad_max_norm)
                 opt_gen.step()
 
                 # update metrics
