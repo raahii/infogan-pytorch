@@ -16,6 +16,15 @@ from logger import Logger, MetricType
 from variable import LatentVariable
 
 
+def weights_init(m):
+    classname = m.__class__.__name__
+    if classname.find("Conv") != -1:
+        m.weight.data.normal_(0.0, 0.02)
+    elif classname.find("BatchNorm") != -1:
+        m.weight.data.normal_(1.0, 0.02)
+        m.bias.data.fill_(0)
+
+
 class Trainer(object):
     def __init__(
         self,
@@ -155,15 +164,20 @@ class Trainer(object):
         gen, dis = self.models["gen"], self.models["dis"]
         dhead, qhead = self.models["dhead"], self.models["qhead"]
 
+        # move the model to appropriate device
         n_gpus = torch.cuda.device_count()
-        if n_gpus >= 1:
-            gen = nn.DataParallel(gen)
-            dis = nn.DataParallel(dis)
-            dhead = nn.DataParallel(dhead)
-            qhead = nn.DataParallel(qhead)
+        if n_gpus > 1:
+            gen, dis = nn.DataParallel(gen), nn.DataParallel(dis)
+            dhead, qhead = nn.DataParallel(dhead), nn.DataParallel(qhead)
 
         gen, dis = gen.to(self.device), dis.to(self.device)
         dhead, qhead = dhead.to(self.device), qhead.to(self.device)
+
+        # initialize model parameters
+        weights_init(gen)
+        weights_init(dis)
+        weights_init(dhead)
+        weights_init(qhead)
 
         # optimizers
         opt_gen = self.optimizers["gen"]

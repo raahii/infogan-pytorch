@@ -53,7 +53,7 @@ class InfoGANLoss:
                 mean, ln_var = c_hat[:, :dim], c_hat[:, dim:]
                 loss = self.continuous_loss(c_true, mean, ln_var)
 
-            loss *= self.latent_vars[key].params["weight"]
+            loss = loss * self.latent_vars[key].params["weight"]
             details[key] = loss
             losses.append(loss)
 

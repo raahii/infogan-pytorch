@@ -8,15 +8,6 @@ import util
 from variable import LatentVariable, build_latent_variables
 
 
-def weights_init(m):
-    classname = m.__class__.__name__
-    if classname.find("Conv") != -1:
-        m.weight.data.normal_(0.0, 0.02)
-    elif classname.find("BatchNorm") != -1:
-        m.weight.data.normal_(1.0, 0.02)
-        m.bias.data.fill_(0)
-
-
 class Noise(nn.Module):
     def __init__(self, use_noise: float, sigma: float = 0.2):
         super().__init__()
@@ -68,7 +59,6 @@ class Generator(nn.Module):
             nn.Tanh()
             # state size. (nc) x 64 x 64
         )
-        self.apply(weights_init)
 
     def forward(self, x):
         return self.main(x)
@@ -134,9 +124,6 @@ class Discriminator(nn.Module):
             # state size. (ndf*8) x 4 x 4
         )
 
-        # setup output structure from latent variables configuration
-        self.apply(weights_init)
-
     def forward(self, x):
         return self.main(x)
 
@@ -157,7 +144,6 @@ class DHead(nn.Module):
             nn.Sigmoid(),
             # state size. 1 x 4 x 4
         )
-        self.apply(weights_init)
 
     def forward(self, x):
         return self.main(x)
@@ -185,8 +171,6 @@ class QHead(nn.Module):
                 self.convs[name] = nn.Conv2d(ndf * 2, var.cdim * 2, 1)
             else:
                 self.convs[name] = nn.Conv2d(ndf * 2, var.cdim, 1)
-
-        self.apply(weights_init)
 
     def forward(self, x):
         mid = self.main(x)
