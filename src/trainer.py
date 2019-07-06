@@ -229,7 +229,7 @@ class Trainer(object):
                 loss_dis_fake = adv_loss(y_fake, loss.LABEL_FAKE)
 
                 loss_dis_fake.backward()
-                clip_grad_norm(gen.parameters(), self.grad_max_norm)
+                clip_grad_norm(dis.parameters(), self.grad_max_norm)
                 opt_dis.step()
 
                 loss_dis = loss_dis_real + loss_dis_fake

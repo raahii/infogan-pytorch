@@ -11,17 +11,20 @@ This repository has the following features that others do not have:
 - OK clean, structured codes
   - This is totally my personal point of view. :wink:
 
-- Tensorborad is available by default.
+- [TensorBoard](https://www.tensorflow.org/tensorboard) is available by default.
 
+## Result
 
-## Prerequisities
+  **COMING SOON**
+
+## Prerequisites
 
 - Python (`~3.6`)
 
 ## Getting Started
 
 ```sh
-make devenv
+make setup
 ```
 
 - Start training
@@ -43,6 +46,14 @@ make devenv
   ```sh
   make tb
   ```
-  Training metrics (ex. loss) are printed on console and [TensorBoard](https://www.tensorflow.org/tensorboard).
+  Training metrics (ex. loss) are printed on console and tensorboard.
 
-  By default, tensorboard watches `result` directory. To change the path, execute `tensorboard --logdir <path>` or edit `Makefile`
+  By default, tensorboard watches `./results` directory. To change the path, execute `tensorboard --logdir <path>` or edit `Makefile`.
+
+
+## TODO
+
+- [ ] upload results on MNIST, Fashion-MNIST datasets.
+- [ ] automatic hyper-parameters tuning with Optuna.
+
+- [ ] separate `z` variable and `c` variable from `latent_vars`.
