@@ -5,11 +5,9 @@ tensorboard_path: "results/debug/runs"
 
 dataset:
   path: "data"
-  name: "mnist"
+  name: "fashion-mnist" # ["mnist", "fashion-mnist"]
   batchsize: 20
   n_workers: 4
-  height: 28
-  width: 28
   number_limit: -1
 
 training:

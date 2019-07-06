@@ -7,10 +7,16 @@ results/*
 notebooks/*
 !.gitkeep
 
-configs/*
-!configs/debug.yaml
-!configs/mnist_v1.yaml
-!configs/mnist_v2.yaml
+!configs/*
+!configs/mnist/
+!configs/fashion-mnist/
+
+configs/mnist/*
+!configs/mnist/mnist-v1.yaml
+!configs/mnist/mnist-v2.yaml
+
+configs/fashion-mnist/*
+!configs/fashion-mnist/fashion-mnist-v1.yaml
 
 deploy.sh
 fetch.sh

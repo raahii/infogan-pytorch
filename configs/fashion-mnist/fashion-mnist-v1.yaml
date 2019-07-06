@@ -1,18 +1,17 @@
-# add c variable
-experiment_name: "mnist_v3"
+experiment_name: "fashion-mnist-v1"
 
-log_path: "results/mnist_v3"
-tensorboard_path: "results/mnist_v3/runs"
+log_path: "results/fashion-mnist-v1"
+tensorboard_path: "results/fashion-mnist-v1/runs"
 
 dataset:
   path: "data"
-  name: "mnist"
-  batchsize: 600
+  name: "fashion-mnist"
+  batchsize: 400
   n_workers: 8
 
 training:
   n_epochs: 300
-  seed: 0
+  seed: 10
   log_interval: 100
   snapshot_interval: 500
   log_samples_interval: 500
@@ -32,7 +31,7 @@ models:
     noise_sigma: 0.01
 
 latent_variables:
-  - 
+  -
     name: "z"
     kind: "z"
     prob: "normal"
@@ -40,19 +39,10 @@ latent_variables:
     mu: 0
     var: 1
 
-  - 
+  -
     name: "c1"
     kind: "c"
     prob: "categorical"
     dim: 1
     k: 10
     weight: 1.0
-
-  - 
-    name: "c2"
-    kind: "c"
-    prob: "normal"
-    dim: 1
-    mu: 0
-    var: 1
-    weight: 0.1
