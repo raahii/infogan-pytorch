@@ -18,6 +18,18 @@ def new_mnist_dataset(root_path: Union[str, Path]) -> torch.utils.data.Dataset:
     return dataset
 
 
+def new_fashion_mnist_dataset(root_path: Union[str, Path]) -> torch.utils.data.Dataset:
+    transform = transforms.Compose(
+        [transforms.Resize(64), transforms.CenterCrop(64), transforms.ToTensor()]
+    )
+
+    dataset = torchvision.datasets.FashionMNIST(
+        root=str(root_path), train=True, download=True, transform=transform
+    )
+
+    return dataset
+
+
 if __name__ == "__main__":
     from torch.utils.data import DataLoader
     from torchvision.utils import make_grid, save_image

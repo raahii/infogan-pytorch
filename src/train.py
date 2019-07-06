@@ -10,7 +10,7 @@ from torch.utils.data import DataLoader
 
 import loss
 import util
-from dataset import new_mnist_dataset
+from dataset import new_fashion_mnist_dataset, new_mnist_dataset
 from logger import Logger
 from model import DHead, Discriminator, Generator, QHead
 from trainer import Trainer
@@ -45,6 +45,8 @@ def main():
     # prepare dataset
     if dataset_name == "mnist":
         dataset = new_mnist_dataset(dataset_path)
+    elif dataset_name == "fashion-mnist":
+        dataset = new_fashion_mnist_dataset(dataset_path)
     else:
         raise NotImplementedError
 
