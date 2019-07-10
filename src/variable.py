@@ -8,10 +8,10 @@ import torch.distributions as dist
 class LatentVariable(object):
     def __init__(self, name: str, kind: str, prob: str, dim: int, **kwargs: Any):
         self.name: str = name
-        self.kind: str = kind
+        self.kind: str = kind  # "z", "c"
         self.dim: int = dim
         self.cdim: int = dim
-        self.prob_name: str = prob
+        self.prob_name: str = prob  # "categorical", "normal", "uniform"
 
         # define probability distribution
         klass: Any = object

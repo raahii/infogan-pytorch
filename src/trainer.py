@@ -49,6 +49,8 @@ class Trainer(object):
 
         self.grad_max_norm = configs["grad_max_norm"]
 
+        self.n_log_samples = configs["n_log_samples"]
+
         self.gen_images_path = self.logger.path / "images"
         self.model_snapshots_path = self.logger.path / "models"
         for p in [self.gen_images_path, self.model_snapshots_path]:
@@ -73,7 +75,8 @@ class Trainer(object):
                 str(self.model_snapshots_path / f"{name}_{self.iteration:05d}.pytorch"),
             )
 
-    def gen_random_images(self, gen: nn.Module):
+    def gen_random_images(self, n: int = 10):
+        gen = self.models["gen"]
         gen.eval()
         with torch.no_grad():
             zs = gen.module.sample_latent_vars(100)
@@ -85,16 +88,17 @@ class Trainer(object):
             x, self.gen_images_path / f"random_{self.iteration}.jpg"
         )
 
-    def gen_images_discrete(self, gen: nn.Module, var_name: str):
+    def gen_images_discrete(self, var_name: str):
         """
-        Generate images with varying discrete variable
+        Generate a k*k grid image with varying discrete variable
         """
 
         k: int = self.latent_vars[var_name].params["k"]
 
+        gen = self.models["gen"]
         gen.eval()
         with torch.no_grad():
-            zs = gen.module.sample_latent_vars(100)
+            zs = gen.module.sample_latent_vars(k * k)
 
             # overwrite variable(e.g. c1) to intentional values
             idx = np.arange(k).repeat(k)
@@ -110,53 +114,40 @@ class Trainer(object):
             x, self.gen_images_path / f"{var_name}_{self.iteration}.jpg"
         )
 
-    def gen_images_continuous(
-        self, gen: nn.Module, var_name_dis: str, var_name_con: str
-    ):
+    def gen_images_continuous(self, var_name: str, n: int = 10):
         """
-        Generate images with varying continuous variable
+        Generate a n*n grid image with varying continuous variable
         """
 
-        k: int = self.latent_vars[var_name_dis].params["k"]
-        # _min: int = self.latent_vars[var_name_con].params["min"]
-        # _max: int = self.latent_vars[var_name_con].params["max"]
         _min: int = -2
         _max: int = 2
 
+        gen = self.models["gen"]
         gen.eval()
         with torch.no_grad():
-            zs = gen.module.sample_latent_vars(k)
+            zs = gen.module.sample_latent_vars(n)
 
-            for var_name in self.latent_vars.keys():
-
-                if var_name == var_name_dis:
-                    # overwrite discrete variable to intentional values
-                    idx = np.arange(k).repeat(k)  # equal along row direction
-                    one_hot = np.zeros((k * k, k))
-                    one_hot[range(k * k), idx] = 1
-                    zs[var_name_dis] = torch.tensor(
-                        one_hot, device=self.device, dtype=torch.float
-                    )
-                elif var_name == var_name_con:
+            for _var_name, var in self.latent_vars.items():
+                if _var_name == var_name:
                     # overwrite continuous variable to intentional values
-                    interp = np.linspace(_min, _max, k)
+                    interp = np.linspace(_min, _max, n)
                     interp = np.expand_dims(interp, 1)
-                    interp = np.tile(interp, (k, 1))  # equal along col direction
-                    zs[var_name_con] = torch.tensor(
+                    interp = np.tile(interp, (n, 1))
+                    zs[_var_name] = torch.tensor(
                         interp, device=self.device, dtype=torch.float
                     )
                 else:
-                    zs[var_name] = (
-                        zs[var_name].view(k, 1, -1).repeat(1, k, 1).view(k * k, -1)
+                    # replicate n times.
+                    # (n, c) -> (n, 1, c) -> (n, n, c) -> (n*n, c)
+                    zs[_var_name] = (
+                        zs[_var_name].view(n, 1, -1).repeat(1, n, 1).view(n * n, -1)
                     )
             x = gen.module.infer(list(zs.values()))
 
-        x = make_grid(x, k, normalize=True)
-        self.logger.tf_log_image(x, self.iteration, f"{var_name_dis}_{var_name_con}")
+        x = make_grid(x, n, normalize=True)
+        self.logger.tf_log_image(x, self.iteration, f"{var_name}")
         torchvision.utils.save_image(
-            x,
-            self.gen_images_path
-            / f"{var_name_dis}_{var_name_con}_{self.iteration}.jpg",
+            x, self.gen_images_path / f"{var_name}_{self.iteration}.jpg"
         )
 
     def train(self):
@@ -230,6 +221,7 @@ class Trainer(object):
 
                 loss_dis_fake.backward()
                 clip_grad_norm(dis.parameters(), self.grad_max_norm)
+                clip_grad_norm(dhead.parameters(), self.grad_max_norm)
                 opt_dis.step()
 
                 loss_dis = loss_dis_real + loss_dis_fake
@@ -250,6 +242,7 @@ class Trainer(object):
 
                 loss_gen.backward()
                 clip_grad_norm(gen.parameters(), self.grad_max_norm)
+                clip_grad_norm(qhead.parameters(), self.grad_max_norm)
                 opt_gen.step()
 
                 # update metrics
@@ -274,12 +267,11 @@ class Trainer(object):
 
                 # generate and save samples
                 if self.iteration % self.configs["log_samples_interval"] == 0:
-                    self.gen_random_images(gen)
-                    self.gen_images_discrete(gen, "c1")
-                    self.gen_images_continuous(gen, "c1", "c2")
-                    self.gen_images_continuous(gen, "c1", "c3")
-                    # for name, var in self.latent_vars.items():
-                    #     if var.prob_name == "categorical":
-                    #         self.gen_images_discrete(gen, name)
-                    #     else:
-                    #         self.gen_images_continuous(gen, "c1", name)
+                    for var_name, var in self.latent_vars.items():
+                        if var.kind == "z":
+                            self.gen_random_images(self.n_log_samples)
+                        else:
+                            if var.prob_name == "categorical":
+                                self.gen_images_discrete(var_name)
+                            else:
+                                self.gen_images_continuous(var_name, self.n_log_samples)
