@@ -1,3 +1,4 @@
+import copy
 import random
 from pathlib import Path
 from typing import Any, Dict
@@ -59,6 +60,8 @@ class Trainer(object):
         self.iteration = 0
         self.epoch = 0
 
+        self.snapshot_models()
+
     def fix_seed(self):
         seed = self.configs["seed"]
         random.seed(seed)
@@ -69,10 +72,18 @@ class Trainer(object):
         torch.backends.cudnn.benchmark = True
 
     def snapshot_models(self):
+        for name, _model in self.models.items():
+            model: nn.Module = copy.deepcopy(_model.module.cpu())
+            torch.save(model, self.model_snapshots_path / f"{name}_model.pytorch")
+
+    def snapshot_params(self):
         for name, model in self.models.items():
             torch.save(
                 model.state_dict(),
-                str(self.model_snapshots_path / f"{name}_{self.iteration:05d}.pytorch"),
+                str(
+                    self.model_snapshots_path
+                    / f"{name}_params_{self.iteration:05d}.pytorch"
+                ),
             )
 
     def gen_random_images(self, n: int = 10):
@@ -263,7 +274,7 @@ class Trainer(object):
 
                 # snapshot models
                 if self.iteration % self.configs["snapshot_interval"] == 0:
-                    self.snapshot_models()
+                    self.snapshot_params()
 
                 # generate and save samples
                 if self.iteration % self.configs["log_samples_interval"] == 0:

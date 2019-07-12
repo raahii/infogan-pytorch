@@ -133,6 +133,10 @@ class Discriminator(nn.Module):
 
         return self.forward(dummy_tensor)
 
+    @property
+    def module(self) -> nn.Module:
+        return self
+
 
 class DHead(nn.Module):
     def __init__(self):
@@ -147,6 +151,10 @@ class DHead(nn.Module):
 
     def forward(self, x):
         return self.main(x)
+
+    @property
+    def module(self) -> nn.Module:
+        return self
 
 
 class QHead(nn.Module):
@@ -180,6 +188,10 @@ class QHead(nn.Module):
             ys[name] = conv(mid).squeeze()
 
         return ys
+
+    @property
+    def module(self) -> nn.Module:
+        return self
 
 
 if __name__ == "__main__":
