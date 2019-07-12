@@ -21,5 +21,8 @@ deploy:
 start-deploy:
 	watch -n 1 make deploy
 
+smi:
+	nvidia-smi -l 3
+
 tb:
 	tensorboard --logdir results

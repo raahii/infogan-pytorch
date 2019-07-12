@@ -1,22 +1,25 @@
+# python files
 .python-version
 .mypy_cache
 __pycache__
 
+# datafiles
 data/*
 results/*
 notebooks/*
 !.gitkeep
 
+# configs
 !configs/*
 !configs/mnist/
 !configs/fashion-mnist/
 
 configs/mnist/*
-!configs/mnist/mnist-v1.yaml
-!configs/mnist/mnist-v2.yaml
+!configs/mnist/mnist.yaml
 
 configs/fashion-mnist/*
-!configs/fashion-mnist/fashion-mnist-v1.yaml
+!configs/fashion-mnist/fashion-mnist.yaml
 
+# utility scripts
 deploy.sh
 fetch.sh

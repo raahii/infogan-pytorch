@@ -17,10 +17,14 @@ training:
   n_epochs: 40
   seed: 0
   log_interval: 1
-  snapshot_interval: 5
-  log_samples_interval: 5
+  snapshot_interval: 1
+  log_samples_interval: 1
   n_log_samples: 10 # save (value) x (value) grid image
   grad_max_norm: 8
+
+  early_stopping: true
+  patience: 20
+
 
 optimizer:
   gen:
