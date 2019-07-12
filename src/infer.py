@@ -24,15 +24,17 @@ def main():
     args = parser.parse_args()
 
     # restore model snapshot
-    gen_model = torch.load(args.gen_model_file)
-    gen_model.load_state_dict(torch.load(args.gen_params_file))
+    gen_model = torch.load(args.gen_model_file, map_location="cpu")
+    gen_params = torch.load(args.gen_params_file, map_location="cpu")
+    gen_model.load_state_dict(gen_params)
     gen_model = gen_model.to(util.current_device())
+    gen_model.device = util.current_device()
 
     # generate and save samples
     args.output_dir.mkdir(exist_ok=True, parents=True)
     latent_vars = gen_model.latent_vars
     for var_name, var in tqdm(latent_vars.items()):
-        img: np.array
+        img: np.ndarray
         if var.kind == "z":
             img = util.gen_random_images(gen_model, args.n_row)
         else:

@@ -22,7 +22,7 @@ def current_device() -> torch.device:
         return torch.device("cpu")
 
 
-def gen_random_images(gen: nn.Module, n: int) -> np.array:
+def gen_random_images(gen: nn.Module, n: int) -> np.ndarray:
     """
     Generate a n*n grid image with random samples
     """
@@ -31,7 +31,7 @@ def gen_random_images(gen: nn.Module, n: int) -> np.array:
         zs = gen.module.sample_latent_vars(n * n)
         x = gen.module.infer(list(zs.values()))
 
-    x = make_grid(x, n, padding=2, pad_value=1, normalize=True)
+    x = make_grid(x, n, normalize=True)
 
     return x
 
@@ -54,7 +54,7 @@ def gen_images_discrete(gen: nn.Module, var_name: str):
 
         x = gen.module.infer(list(zs.values()))
 
-    x = make_grid(x, k, padding=2, pad_value=1, normalize=True)
+    x = make_grid(x, k, normalize=True)
 
     return x
 
@@ -88,6 +88,6 @@ def gen_images_continuous(gen: nn.Module, var_name: str, n: int):
                 )
         x = gen.module.infer(list(zs.values()))
 
-    x = make_grid(x, n, padding=2, pad_value=1, normalize=True)
+    x = make_grid(x, n, normalize=True)
 
     return x

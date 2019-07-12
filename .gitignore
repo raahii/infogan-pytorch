@@ -11,15 +11,9 @@ notebooks/*
 
 # configs
 configs/*
-!configs/mnist/
-!configs/fashion-mnist/
+!configs/mnist.yaml
+!configs/fashion-mnist.yaml
 !configs/debug.yaml
-
-configs/mnist/*
-!configs/mnist/mnist.yaml
-
-configs/fashion-mnist/*
-!configs/fashion-mnist/fashion-mnist.yaml
 
 # utility scripts
 deploy.sh
