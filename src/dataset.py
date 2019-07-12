@@ -8,7 +8,11 @@ import torchvision.transforms as transforms
 
 def new_mnist_dataset(root_path: Union[str, Path]) -> torch.utils.data.Dataset:
     transform = transforms.Compose(
-        [transforms.Resize(64), transforms.CenterCrop(64), transforms.ToTensor()]
+        [
+            transforms.Resize(64),
+            transforms.ToTensor(),
+            transforms.Normalize((0.5,), (0.5,)),
+        ]
     )
 
     dataset = torchvision.datasets.MNIST(
@@ -20,7 +24,11 @@ def new_mnist_dataset(root_path: Union[str, Path]) -> torch.utils.data.Dataset:
 
 def new_fashion_mnist_dataset(root_path: Union[str, Path]) -> torch.utils.data.Dataset:
     transform = transforms.Compose(
-        [transforms.Resize(64), transforms.CenterCrop(64), transforms.ToTensor()]
+        [
+            transforms.Resize(64),
+            transforms.ToTensor(),
+            transforms.Normalize((0.5,), (0.5,)),
+        ]
     )
 
     dataset = torchvision.datasets.FashionMNIST(

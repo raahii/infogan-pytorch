@@ -28,7 +28,7 @@ def gen_random_images(gen: nn.Module, n: int) -> np.array:
         zs = gen.module.sample_latent_vars(n * n)
         x = gen.module.infer(list(zs.values()))
 
-    x = make_grid(x, n, padding=1, pad_value=255)
+    x = make_grid(x, n, padding=2, pad_value=0, normalize=True)
 
     return x
 
@@ -51,7 +51,7 @@ def gen_images_discrete(gen: nn.Module, var_name: str):
 
         x = gen.module.infer(list(zs.values()))
 
-    x = make_grid(x, k, padding=1, pad_value=255)
+    x = make_grid(x, k, padding=2, pad_value=0, normalize=True)
 
     return x
 
@@ -85,6 +85,6 @@ def gen_images_continuous(gen: nn.Module, var_name: str, n: int):
                 )
         x = gen.module.infer(list(zs.values()))
 
-    x = make_grid(x, n, padding=1, pad_value=255)
+    x = make_grid(x, n, padding=2, pad_value=0, normalize=True)
 
     return x
