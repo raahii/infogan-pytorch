@@ -9,7 +9,7 @@ import torchvision
 from torch import nn
 from torch.nn.utils import clip_grad_norm_ as clip_grad_norm
 from torch.utils.data import DataLoader
-from torchvision.utils import make_grid, save_image
+from torchvision.utils import save_image
 
 import loss
 import util
@@ -86,80 +86,20 @@ class Trainer(object):
                 ),
             )
 
-    def gen_random_images(self, n: int = 10):
-        gen = self.models["gen"]
-        gen.eval()
-        with torch.no_grad():
-            zs = gen.module.sample_latent_vars(100)
-            x = gen.module.infer(list(zs.values()))
+    def log_random_images(self, n: int):
+        img = util.gen_random_images(self.models["gen"], n)
+        self.logger.tf_log_image(img, self.iteration, "random")
+        save_image(img, self.gen_images_path / f"random_{self.iteration}.jpg")
 
-        x = make_grid(x, 10, normalize=True)  # , scale_each=True)
-        self.logger.tf_log_image(x, self.iteration, "random")
-        torchvision.utils.save_image(
-            x, self.gen_images_path / f"random_{self.iteration}.jpg"
-        )
+    def log_images_discrete(self, var_name: str):
+        img = util.gen_images_discrete(self.models["gen"], var_name)
+        self.logger.tf_log_image(img, self.iteration, var_name)
+        save_image(img, self.gen_images_path / f"{var_name}_{self.iteration}.jpg")
 
-    def gen_images_discrete(self, var_name: str):
-        """
-        Generate a k*k grid image with varying discrete variable
-        """
-
-        k: int = self.latent_vars[var_name].params["k"]
-
-        gen = self.models["gen"]
-        gen.eval()
-        with torch.no_grad():
-            zs = gen.module.sample_latent_vars(k * k)
-
-            # overwrite variable(e.g. c1) to intentional values
-            idx = np.arange(k).repeat(k)
-            one_hot = np.zeros((k * k, k))
-            one_hot[range(k * k), idx] = 1
-            zs[var_name] = torch.tensor(one_hot, device=self.device, dtype=torch.float)
-
-            x = gen.module.infer(list(zs.values()))
-
-        x = make_grid(x, k, normalize=True)
-        self.logger.tf_log_image(x, self.iteration, var_name)
-        torchvision.utils.save_image(
-            x, self.gen_images_path / f"{var_name}_{self.iteration}.jpg"
-        )
-
-    def gen_images_continuous(self, var_name: str, n: int = 10):
-        """
-        Generate a n*n grid image with varying continuous variable
-        """
-
-        _min: int = -2
-        _max: int = 2
-
-        gen = self.models["gen"]
-        gen.eval()
-        with torch.no_grad():
-            zs = gen.module.sample_latent_vars(n)
-
-            for _var_name, var in self.latent_vars.items():
-                if _var_name == var_name:
-                    # overwrite continuous variable to intentional values
-                    interp = np.linspace(_min, _max, n)
-                    interp = np.expand_dims(interp, 1)
-                    interp = np.tile(interp, (n, 1))
-                    zs[_var_name] = torch.tensor(
-                        interp, device=self.device, dtype=torch.float
-                    )
-                else:
-                    # replicate n times.
-                    # (n, c) -> (n, 1, c) -> (n, n, c) -> (n*n, c)
-                    zs[_var_name] = (
-                        zs[_var_name].view(n, 1, -1).repeat(1, n, 1).view(n * n, -1)
-                    )
-            x = gen.module.infer(list(zs.values()))
-
-        x = make_grid(x, n, normalize=True)
-        self.logger.tf_log_image(x, self.iteration, f"{var_name}")
-        torchvision.utils.save_image(
-            x, self.gen_images_path / f"{var_name}_{self.iteration}.jpg"
-        )
+    def log_images_continuous(self, var_name: str, n: int):
+        img = util.gen_images_continuous(self.models["gen"], var_name, n)
+        self.logger.tf_log_image(img, self.iteration, f"{var_name}")
+        save_image(img, self.gen_images_path / f"{var_name}_{self.iteration}.jpg")
 
     def train(self):
         # retrieve models and move them if necessary
@@ -280,9 +220,9 @@ class Trainer(object):
                 if self.iteration % self.configs["log_samples_interval"] == 0:
                     for var_name, var in self.latent_vars.items():
                         if var.kind == "z":
-                            self.gen_random_images(self.n_log_samples)
+                            self.log_random_images(self.n_log_samples)
                         else:
                             if var.prob_name == "categorical":
-                                self.gen_images_discrete(var_name)
+                                self.log_images_discrete(var_name)
                             else:
-                                self.gen_images_continuous(var_name, self.n_log_samples)
+                                self.log_images_continuous(var_name, self.n_log_samples)
