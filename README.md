@@ -26,7 +26,7 @@ This repository has the following features that others do not have:
 
 
 
-<table style="margin: 0 auto; text-align: center;">
+<table style="width: 80%; margin: 0 auto; text-align: center;">
   <tr>
   	<th style="text-align: center;">c1 (digit type)</th>
   	<th style="text-align: center;">c2 (rotation)</th>
@@ -37,7 +37,7 @@ This repository has the following features that others do not have:
   </tr>
 </table>
 
-<table style="margin: 0 auto; text-align: center;">
+<table style="width: 80%; margin: 0 auto; text-align: center;">
   <tr>
   	<th style="text-align: center;">c3 (line thickness)</th>
   	<th style="text-align: center;">c4 (digit width)</th>
