@@ -5,7 +5,6 @@ __pycache__
 
 # datafiles
 data/*
-results/*
 notebooks/*
 !.gitkeep
 
@@ -14,6 +13,10 @@ configs/*
 !configs/mnist.yaml
 !configs/fashion-mnist.yaml
 !configs/debug.yaml
+
+# results
+results/*
+!results/mnist
 
 # utility scripts
 deploy.sh
