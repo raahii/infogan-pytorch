@@ -10,9 +10,10 @@ notebooks/*
 !.gitkeep
 
 # configs
-!configs/*
+configs/*
 !configs/mnist/
 !configs/fashion-mnist/
+!configs/debug.yaml
 
 configs/mnist/*
 !configs/mnist/mnist.yaml
